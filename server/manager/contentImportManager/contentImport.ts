@@ -160,6 +160,7 @@ export class ImportContent implements ITaskExecuter {
     } catch (err) {
       logger.error(this.contentImportData._id, "Error while processContents for ", err);
       this.contentImportData.status = ImportStatus.failed;
+      this.contentImportData.importStep = ImportSteps.copyEcar;
       this.contentImportData.failedCode = err.errCode || "CONTENT_SAVE_FAILED";
       this.contentImportData.failedReason = err.errMessage;
       await this.syncStatusToDb();
@@ -200,9 +201,9 @@ export class ImportContent implements ITaskExecuter {
       };
       if (dbResource) {
         item._rev = dbResource._rev;
-        item.visibility = dbResource.visibility;
         item.desktopAppMetadata.createdOn = dbResource.desktopAppMetadata.createdOn;
       }
+      item.visibility = parentContent ? "Default" : item.visibility;
       if (parentContent && item.mimeType === "application/vnd.ekstep.content-collection") {
         const itemsClone = _.cloneDeep(_.get(this.manifestJson, "archive.items"));
         item.children = this.createHierarchy(itemsClone, item);
@@ -273,6 +274,7 @@ export class ImportContent implements ITaskExecuter {
     logger.error("Unexpected exit of child process for importId",
       this.contentImportData._id, "with signal and code", code, signal);
     this.contentImportData.status = ImportStatus.failed; // this line should not be removed
+    this.contentImportData.importStep = ImportSteps.copyEcar;
     this.contentImportData.failedCode = "WORKER_UNHANDLED_EXCEPTION";
     this.contentImportData.failedReason = "Import Worker exited while processing ECar";
     await this.syncStatusToDb();
@@ -281,6 +283,7 @@ export class ImportContent implements ITaskExecuter {
 
   private async handleChildProcessError(err: ErrorObj) {
     logger.error(this.contentImportData._id, "Got error while importing ecar with importId:", err);
+    this.contentImportData.importStep = ImportSteps.copyEcar;
     this.contentImportData.failedCode = err.errCode;
     this.contentImportData.failedReason = err.errMessage;
     this.contentImportData.status = ImportStatus.failed;

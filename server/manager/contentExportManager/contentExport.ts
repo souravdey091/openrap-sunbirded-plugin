@@ -16,20 +16,20 @@ export class ExportContent {
   private corruptContents = [];
   private startTime = Date.now();
   private cb;
-  private parentDetails;
-  constructor(private destFolder, private dbParentDetails, private dbChildNodes) { }
+  constructor(private destFolder, private dbParentNode, private dbChildNodes) { }
   public async export(cb) {
     this.cb = cb;
     try {
       this.parentArchive = fileSDK.archiver();
-      this.parentManifest = await fileSDK.readJSON(path.join(this.contentBaseFolder, this.dbParentDetails.identifier, "manifest.json"));
-      this.parentDetails = _.get(this.parentManifest, "archive.items[0]");
-      this.ecarName = this.parentDetails.name ? this.parentDetails.name.replace(/[&\/\\#,+()$~%.!@%|"":*?<>{}]/g, "") : "Untitled content";
-      logger.info("Export content mimeType", this.parentDetails.mimeType);
-      if (this.parentDetails.mimeType === "application/vnd.ekstep.content-collection") {
+      this.ecarName = this.dbParentNode.name
+      ? this.dbParentNode.name.replace(/[&\/\\#,+()$~%.!@%|"":*?<>{}]/g, "") : "Untitled content";
+      logger.info("Export content mimeType", this.dbParentNode.mimeType);
+      if (this.dbParentNode.mimeType === "application/vnd.ekstep.content-collection") {
+        this.parentManifest = await fileSDK.readJSON(path.join(this.contentBaseFolder, this.dbParentNode.identifier, "manifest.json"));
+        this.dbParentNode = _.get(this.parentManifest, "archive.items[0]");
         await this.loadParentCollection();
       } else {
-        await this.loadContent(this.parentDetails, false);
+        await this.loadContent(this.dbParentNode, false);
       }
       // this.interval = setInterval(() => logger.log(this.parentArchive.pointer(),
       // this.parentArchive._entriesCount, this.parentArchive._entriesProcessedCount), 1000);
@@ -42,25 +42,32 @@ export class ExportContent {
     }
   }
   private async loadParentCollection() {
-    if (this.parentDetails.appIcon) {
-      const appIconFileName = path.basename(this.parentDetails.appIcon);
-      const appIcon = path.join(this.contentBaseFolder, this.parentDetails.identifier, appIconFileName);
-      if (path.dirname(this.parentDetails.appIcon) !== ".") {
-        this.archiveAppend("createDir", null, path.dirname(this.parentDetails.appIcon));
+    if (this.dbParentNode.appIcon) {
+      const appIconFileName = path.basename(this.dbParentNode.appIcon);
+      const appIcon = path.join(this.contentBaseFolder, this.dbParentNode.identifier, appIconFileName);
+      if (path.dirname(this.dbParentNode.appIcon) !== ".") {
+        this.archiveAppend("createDir", null, path.dirname(this.dbParentNode.appIcon));
       }
-      this.archiveAppend("path", appIcon, this.parentDetails.appIcon);
+      this.archiveAppend("path", appIcon, this.dbParentNode.appIcon);
     }
-    this.archiveAppend("path", path.join(this.contentBaseFolder, this.parentDetails.identifier, "manifest.json"), "manifest.json");
+    this.parentManifest.archive.items = _.map(this.parentManifest.archive.items, (item) => {
+      if (item.mimeType !== "application/vnd.ekstep.content-collection") {
+        const dbContentRef = _.find(this.dbChildNodes, {identifier: item.identifier});
+        return dbContentRef ? dbContentRef : item;
+      }
+      return item;
+    });
+    this.archiveAppend("buffer", Buffer.from(JSON.stringify(this.parentManifest)), "manifest.json");
     const exist = await fse.pathExists(path.join(this.contentBaseFolder,
-      this.parentDetails.identifier, "hierarchy.json"));
+      this.dbParentNode.identifier, "hierarchy.json"));
     if (exist) {
-      this.archiveAppend("path", path.join(this.contentBaseFolder, this.parentDetails.identifier, "hierarchy.json"), "hierarchy.json");
+      this.archiveAppend("path", path.join(this.contentBaseFolder, this.dbParentNode.identifier, "hierarchy.json"), "hierarchy.json");
     }
     await this.loadChildNodes();
   }
   private async loadChildNodes() {
-    if (!this.parentDetails.childNodes || !this.parentDetails.childNodes.length) {
-      logger.debug("No child node for content to export", this.parentDetails.identifier);
+    if (!this.dbParentNode.childNodes || !this.dbParentNode.childNodes.length) {
+      logger.debug("No child node for content to export", this.dbParentNode.identifier);
       return;
     }
     const childNodes = _.filter(_.get(this.parentManifest, "archive.items"),
@@ -68,18 +75,18 @@ export class ExportContent {
     for (const child of childNodes) {
       const dbChildDetails = _.find(this.dbChildNodes, { identifier: child });
       const childManifest = await fileSDK.readJSON(path.join(this.contentBaseFolder, child, "manifest.json"))
-        .catch((err) => logger.error(`Error while reading content: ${child} for content import for ${this.parentDetails.identifier}`));
+        .catch((err) => logger.error(`Error while reading content: ${child} for content import for ${this.dbParentNode.identifier}`));
       if (childManifest) {
         const childDetails = _.get(childManifest, "archive.items[0]");
         await this.loadContent(childDetails, true);
       } else if (dbChildDetails) {
-        await this.loadContent(dbChildDetails, true, true);
+        await this.loadContent(dbChildDetails, true);
       } else {
         this.corruptContents.push({ id: child, reason: "CONTENT_MISSING" });
       }
     }
   }
-  private async loadContent(contentDetails, child, manifestMissing = false) {
+  private async loadContent(contentDetails, child) {
     const contentState = await this.validContent(contentDetails);
     if (!contentState.valid) {
       this.corruptContents.push({ id: contentDetails.identifier, reason: contentState.reason });
@@ -89,12 +96,8 @@ export class ExportContent {
     if (child) {
       this.archiveAppend("createDir", null, contentDetails.identifier);
     }
-    if (manifestMissing) {
-      this.archiveAppend("buffer", this.getManifestBuffer(contentDetails), baseDestPath + "manifest.json");
-    } else {
-      this.archiveAppend("path", path.join(this.contentBaseFolder, contentDetails.identifier, "manifest.json"),
+    this.archiveAppend("path", path.join(this.contentBaseFolder, contentDetails.identifier, "manifest.json"),
         baseDestPath + "manifest.json");
-    }
     if (contentDetails.appIcon) {
       if (path.dirname(contentDetails.appIcon) !== ".") {
         this.archiveAppend("createDir", null, baseDestPath + path.dirname(contentDetails.appIcon));
@@ -130,13 +133,27 @@ export class ExportContent {
         return { valid: false, reason: "APP_ICON_MISSING" };
       }
     }
-    if (contentDetails.artifactUrl && contentDetails.contentDisposition !== "online"
-      && path.extname(contentDetails.artifactUrl) !== ".zip") {
+    if (!contentDetails.artifactUrl || contentDetails.contentDisposition === "online") {
+      return { valid: true };
+    }
+    if (path.extname(contentDetails.artifactUrl) !== ".zip") {
       const artifactUrlName = path.basename(contentDetails.artifactUrl);
       const artifactUrlPath = path.join(this.contentBaseFolder, contentDetails.identifier, artifactUrlName);
       const artifactExist = await fse.pathExists(artifactUrlPath);
       if (!artifactExist) {
-        return { valid: false, reason: "ARTIFACT_URL_MISSING" };
+        return { valid: false, reason: "ARTIFACT_MISSING" };
+      }
+    } else {
+      let hasZipEntry: any = await this.readDirectory(path.join(this.contentBaseFolder, contentDetails.identifier));
+      hasZipEntry = _.filter(hasZipEntry, (entry) => {
+        if ((contentDetails.appIcon && contentDetails.appIcon.includes(entry))
+          || entry === "manifest.json") {
+          return false;
+        }
+        return true;
+      });
+      if (!hasZipEntry.length) {
+        return { valid: false, reason: "ZIP_ARTIFACT_MISSING" };
       }
     }
     return { valid: true };

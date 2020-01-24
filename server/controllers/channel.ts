@@ -1,6 +1,5 @@
 import { logger } from "@project-sunbird/ext-framework-server/logger";
 import { Manifest } from "@project-sunbird/ext-framework-server/models";
-import * as glob from "glob";
 import * as _ from "lodash";
 import { containerAPI } from "OpenRAP/dist/api";
 import * as path from "path";
@@ -23,7 +22,7 @@ export class Channel {
     try {
       const files =  await this.fileSDK.readdir(path.join("data", "channels"));
       const channelsFilesBasePath = this.fileSDK.getAbsPath(path.join("data", "channels"));
-      let channelsList =  await this.databaseSdk.list("channel", {startkey: "_design0"});
+      let channelsList =  await this.databaseSdk.list("channel", {});
       channelsList = _.get(channelsList, "rows");
       const channelsListLength = channelsList ? channelsList.length : 0;
       const channelDocs = [];

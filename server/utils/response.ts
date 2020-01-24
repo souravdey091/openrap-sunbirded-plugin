@@ -54,6 +54,21 @@ export default class Response {
         responseCode: "CLIENT_ERROR",
         result: {},
       };
+    } else if (responseCode === 507) {
+      resObj = {
+        id,
+        ver: "1.0",
+        ts: new Date().toISOString(),
+        params: {
+          resmsgid: uuid.v4(),
+          msgid: uuid.v4(),
+          status: "failed",
+          err: errCode || "LOW_DISK_SPACE",
+          errmsg: errmsg || "Low Disk space",
+        },
+        responseCode: "CLIENT_ERROR",
+        result: {},
+      };
     } else if (responseCode === 401) {
       resObj = {
         id,

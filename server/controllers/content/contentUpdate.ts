@@ -25,59 +25,67 @@ export default class ContentUpdate {
       let id = req.params.id;
       let parentId = _.get(req.body, "request.parentId");
       const localContentData = await this.databaseSdk.get("content", id);
-      let liveContentData = await HTTPService.get(
-        `${process.env.APP_BASE_URL}/api/content/v1/read/${id}`,
-        {}
-      ).toPromise();
-
-      if (
-        parentId &&
-        _.get(liveContentData, "data.result.content.mimeType") !==
-          "application/vnd.ekstep.content-collection" &&
-        _.get(liveContentData, "data.result.content.pkgVersion") >
-          localContentData.pkgVersion
-      ) {
-        // Resource update inside collection
-        logger.debug(
-          `Resource Id inside collection = "${id}" for content update`
-        );
-        await this.resourceInsideCollectionUpdate(
-          parentId,
-          liveContentData
-        ).then(data => {
-          return res.send(Response.success("api.content.update", data, req));
-        });
-      } else if (
-        _.get(liveContentData, "data.result.content.mimeType") ===
-          "application/vnd.ekstep.content-collection" &&
-        _.get(liveContentData, "data.result.content.pkgVersion") >
-          localContentData.pkgVersion
-      ) {
-        // Collection update
-        logger.debug(`Collection Id = "${id}" for content update`);
-        await this.collectionUpdate(localContentData, liveContentData).then(
-          data => {
+      if (!_.has(localContentData.desktopAppMetadata, "isAvailable") ||
+      localContentData.desktopAppMetadata.isAvailable) {
+        let liveContentData = await HTTPService.get(
+          `${process.env.APP_BASE_URL}/api/content/v1/read/${id}`,
+          {}
+        ).toPromise();
+  
+        if (
+          parentId &&
+          _.get(liveContentData, "data.result.content.mimeType") !==
+            "application/vnd.ekstep.content-collection" &&
+          _.get(liveContentData, "data.result.content.pkgVersion") >
+            localContentData.pkgVersion
+        ) {
+          // Resource update inside collection
+          logger.debug(
+            `Resource Id inside collection = "${id}" for content update`
+          );
+          await this.resourceInsideCollectionUpdate(
+            parentId,
+            liveContentData
+          ).then(data => {
             return res.send(Response.success("api.content.update", data, req));
-          }
-        );
-      } else if (
-        _.get(liveContentData, "data.result.content.mimeType") !==
-          "application/vnd.ekstep.content-collection" &&
-        _.get(liveContentData, "data.result.content.pkgVersion") >
-          localContentData.pkgVersion
-      ) {
-        // Resource update
-        logger.debug(`Resource Id = "${id}" for content update`);
-        await this.resourceUpdate(liveContentData).then(data => {
-          return res.send(Response.success("api.content.update", data, req));
-        });
+          });
+        } else if (
+          _.get(liveContentData, "data.result.content.mimeType") ===
+            "application/vnd.ekstep.content-collection" &&
+          _.get(liveContentData, "data.result.content.pkgVersion") >
+            localContentData.pkgVersion
+        ) {
+          // Collection update
+          logger.debug(`Collection Id = "${id}" for content update`);
+          await this.collectionUpdate(localContentData, liveContentData).then(
+            data => {
+              return res.send(Response.success("api.content.update", data, req));
+            }
+          );
+        } else if (
+          _.get(liveContentData, "data.result.content.mimeType") !==
+            "application/vnd.ekstep.content-collection" &&
+          _.get(liveContentData, "data.result.content.pkgVersion") >
+            localContentData.pkgVersion
+        ) {
+          // Resource update
+          logger.debug(`Resource Id = "${id}" for content update`);
+          await this.resourceUpdate(liveContentData).then(data => {
+            return res.send(Response.success("api.content.update", data, req));
+          });
+        } else {
+          logger.error(
+            `ReqId = "${req.headers["X-msgid"]}": Update not available for the content: ${req.params.id}`
+          );
+          res.status(400);
+          return res.send(
+            Response.error("api.content.update", 400, "Update not available")
+          );
+        }
       } else {
-        logger.error(
-          `ReqId = "${req.headers["X-msgid"]}": Update not available for the content: ${req.params.id}`
-        );
-        res.status(400);
+        res.status(404);
         return res.send(
-          Response.error("api.content.update", 400, "Update not available")
+          Response.error("api.content.update", status, "Content Not Found")
         );
       }
     } catch (error) {

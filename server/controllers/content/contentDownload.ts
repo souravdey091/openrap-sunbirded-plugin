@@ -20,6 +20,17 @@ export enum CONTENT_DOWNLOAD_STATUS {
     Paused = "PAUSED",
     Canceled = "CANCELED",
 }
+export enum contentZipToUnzipRatio {
+    "application/vnd.ekstep.content-collection" = 1.5,
+    "application/epub" = 1.5,
+    "application/vnd.ekstep.html-archive" = 3,
+    "video/webm" = 1.5,
+    "video/mp4" = 1.5,
+    "application/vnd.ekstep.h5p-archive" = 3,
+    "application/pdf" = 1.5,
+    "application/vnd.ekstep.ecml-archive" = 3,
+    "video/x-youtube" = 1.5,
+}
 enum API_DOWNLOAD_STATUS {
     inprogress = "INPROGRESS",
     submitted = "SUBMITTED",
@@ -42,11 +53,12 @@ export default class ContentDownload {
 
     private downloadManager;
     private pluginId;
-
+    private systemSDK;
     constructor(manifest: Manifest) {
         this.databaseSdk.initialize(manifest.id);
         this.pluginId = manifest.id;
         this.downloadManager = containerAPI.getDownloadManagerInstance(this.pluginId);
+        this.systemSDK = containerAPI.getSystemSDKInstance(manifest.id);
     }
 
     download(req: any, res: any): any {
@@ -66,6 +78,8 @@ export default class ContentDownload {
                         logger.info(`ReqId = "${req.headers['X-msgid']}": Found content:${_.get(content, 'data.result.content.mimeType')} is not of type collection`)
                         // insert to the to content_download_queue
                         // add the content to queue using downloadManager
+                        const zipSize = (_.get(content, "data.result.content.size") as number);
+                        await this.checkDiskSpaceAvailability(zipSize, false);
                         let downloadFiles = [{
                             id: (_.get(content, "data.result.content.identifier") as string),
                             url: (_.get(content, "data.result.content.downloadUrl") as string),
@@ -102,7 +116,6 @@ export default class ContentDownload {
                             size: (_.get(content, "data.result.content.size") as number)
                         }];
                         let totalCollectionSize = _.get(content, "data.result.content.size");
-
                         // get the child contents
                         let childNodes = _.get(content, "data.result.content.childNodes")
                         if (!_.isEmpty(childNodes)) {
@@ -143,6 +156,7 @@ export default class ContentDownload {
                             contentType: _.get(content, 'data.result.content.contentType'),
                             resourceId: _.get(content, "data.result.content.identifier")
                         }
+                        await this.checkDiskSpaceAvailability(totalCollectionSize, true);
                         logger.debug(`ReqId = "${req.headers['X-msgid']}": insert collection in Database`);
                         await this.databaseSdk.insert(dbName, {
                             downloadId: downloadId,
@@ -166,6 +180,10 @@ export default class ContentDownload {
 
             } catch (error) {
                 logger.error(`ReqId = "${req.headers['X-msgid']}": Received error while processing download request and err.message: ${error.message}, for content ${req.params.id}`);
+                if (_.get(error, "code") === "LOW_DISK_SPACE") {
+                    res.status(507);
+                    return res.send(Response.error("api.content.download", 507, "Low disk space", "LOW_DISK_SPACE"));
+                }
                 res.status(500)
                 return res.send(Response.error("api.content.download", 500))
             }
@@ -597,6 +615,15 @@ export default class ContentDownload {
             return res.send(
                 Response.error("api.content.retry.download", status, _.get(error, "message"), _.get(error, "code")),
             );
+        }
+    }
+    private async checkDiskSpaceAvailability(zipSize, collection) {
+        const availableDiskSpace = await this.systemSDK.getHardDiskInfo()
+        .then(({availableHarddisk}) => availableHarddisk - 3e+8); // keeping buffer of 300 mb, this can be configured);
+        if (!collection || (zipSize + (zipSize * 1.5) > availableDiskSpace)) { 
+            throw { message: "Disk space is low, couldn't copy Ecar" , code : "LOW_DISK_SPACE"};
+        } else if (zipSize * 1.5 > availableDiskSpace) {
+            throw { message: "Disk space is low, couldn't copy Ecar" , code : "LOW_DISK_SPACE"};
         }
     }
 }

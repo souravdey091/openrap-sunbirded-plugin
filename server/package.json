@@ -1,13 +1,13 @@
 {
   "name": "openrap-sunbirded-plugin",
-  "version": "0.0.49",
+  "version": "0.0.53",
   "description": "This plugin provides api's for offline consumption",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tslint **/*.ts  && node_modules/.bin/rimraf ./dist  && tsc --noImplicitUseStrict && node_modules/.bin/cpy package.json ./dist &&  node_modules/.bin/cpy  db/* dist/db/pouchdb",
     "pre-test": "rimraf test && tsc --noImplicitUseStrict --outDir test/openrap-sunbirded-plugin && node_modules/.bin/cpy package.json test/openrap-sunbirded-plugin &&  node_modules/.bin/cpy  db/* test/openrap-sunbirded-plugin/db/pouchdb",
-    "test": "tslint **/*.ts && npm run pre-test &&  nyc --reporter=html --reporter=text mocha --timeout 10000 --exit -r ts-node/register **/**/*.spec.ts **/*.spec.ts *.spec.ts --exclude **/node_modules/** && npm run post-test",
+    "test": "tslint **/*.ts && npm run post-test && npm run pre-test &&  nyc --reporter=html --reporter=text mocha --timeout 10000 --exit -r ts-node/register **/**/*.spec.ts **/*.spec.ts *.spec.ts --exclude **/node_modules/** && npm run post-test",
     "post-test": "rimraf test test_data/openrap-sunbirded-plugin/content test_data/openrap-sunbirded-plugin/ecars test_data/openrap-sunbirded-plugin/telemetry_archived test_data/database/* test_data/log test_data/export_contents/* ",
     "prepare-data": "node_modules/.bin/rimraf ./dist && tsc --noImplicitUseStrict &&  node ./dist/build/index.js",
     "lint": "tslint **/*.ts --fix"

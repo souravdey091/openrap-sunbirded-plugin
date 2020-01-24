@@ -446,7 +446,8 @@ export class Router {
       },
       proxy(proxyUrl, {
         proxyReqPathResolver: function (req) {
-          return `/api/course/v1/hierarchy/${req.params.id}`;
+          const queryParams = req.url.split("?")[1];
+          return queryParams ? `/api/course/v1/hierarchy/${req.params.id}?${queryParams}` : `/api/course/v1/hierarchy/${req.params.id}`;
         },
         userResDecorator: function (proxyRes, proxyResData, req) {
           return new Promise(function (resolve) {
@@ -657,6 +658,9 @@ export class Router {
     });
     let contentDelete = new ContentDelete(manifest);
     app.post("/api/content/v1/delete", contentDelete.delete.bind(contentDelete));
+
+    app.get("/api/telemetry/v1/info", telemetry.getTelemetryInfo.bind(telemetry));
+    app.post("/api/telemetry/v1/export", telemetry.exportTelemetry.bind(telemetry));
 
     app.use(
       "/content-plugins/*",

@@ -962,7 +962,7 @@ describe("Test Page assemble with and without referrer", () => {
 describe("Test Import Content/Collection", () => {
 
     it("#Import Collections ", (done) => {
-        const filePath = [`${__dirname}/test_data/to_import_contents/TextBookTest.ecar`, `${__dirname}/test_data/to_import_contents/Maths_VI6.ecar`];
+        const filePath = [`${__dirname}/test_data/to_import_contents/TextBookTest.ecar`, `${__dirname}/test_data/to_import_contents/Maths_VI6.ecar`,`${__dirname}/test_data/to_import_contents/TEST.ecar`];
         const req = supertest(app).post("/api/content/v1/import");
         req.send(filePath);
         req.expect(200);
@@ -1593,35 +1593,6 @@ describe("Export content / collection", () => {
 
 describe("Delete content / collection", () => {
 
-    it(`#Delete content`, (done) => {
-        supertest(app)
-        .post("/api/content/v1/delete")
-        .send({request: {contents: ["KP_FT_1564394134764"]}})
-        .expect("Content-Type", "application/json; charset=utf-8")
-        .expect(200)
-        .end((err, res) => {
-                expect(res.body.id).to.equal("api.content.delete");
-                expect(res.body.result.deleted).to.contain("KP_FT_1564394134764").to.be.an("array");
-                expect(res.body.result.failed).to.be.an("array");
-                done();
-            });
-    });
-
-    it(`#Delete content (ERROR)`, (done) => {
-        supertest(app)
-        .post("/api/content/v1/delete")
-        .send()
-        .expect("Content-Type", "application/json; charset=utf-8")
-        .expect(200)
-        .end((err, res) => {
-            expect(res.body.id).to.equal("api.content.delete");
-            expect(res.body.params.errmsg).to.equal("MISSING_CONTENTS");
-            expect(res.body.result).not.to.have.property("deleted");
-            expect(res.body.result).not.to.have.property("failed");
-            done();
-        });
-});
-
     it("#Import Collections ", (done) => {
         const filePath = [`${__dirname}/test_data/to_import_contents/TextBookTest.ecar`];
         const req = supertest(app).post("/api/content/v1/import");
@@ -1664,6 +1635,35 @@ describe("Delete content / collection", () => {
                 expect(res.body.result.failed).to.be.an("array");
                 done();
             });
+    });
+
+    it(`#Delete content`, (done) => {
+        supertest(app)
+        .post("/api/content/v1/delete")
+        .send({request: {contents: ["do_112832394979106816112"]}})
+        .expect("Content-Type", "application/json; charset=utf-8")
+        .expect(200)
+        .end((err, res) => {
+                expect(res.body.id).to.equal("api.content.delete");
+                expect(res.body.result.deleted).to.contain("do_112832394979106816112").to.be.an("array");
+                expect(res.body.result.failed).to.be.an("array");
+                done();
+            });
+    });
+
+    it(`#Delete content (ERROR)`, (done) => {
+        supertest(app)
+        .post("/api/content/v1/delete")
+        .send()
+        .expect("Content-Type", "application/json; charset=utf-8")
+        .expect(200)
+        .end((err, res) => {
+            expect(res.body.id).to.equal("api.content.delete");
+            expect(res.body.params.errmsg).to.equal("MISSING_CONTENTS");
+            expect(res.body.result).not.to.have.property("deleted");
+            expect(res.body.result).not.to.have.property("failed");
+            done();
+        });
     });
 });
 

@@ -142,14 +142,10 @@ export class Server extends BaseServer {
     const channel = new Channel(manifest);
     const form = new Form(manifest);
     const location = new Location(manifest);
-    await organization.insert();
-    await resourceBundle.insert();
-    await framework.insert();
-    await faqs.insert();
-    await channel.insert();
-    await form.insert();
-    await page.insert();
-    await location.insert();
+    Promise.all([organization.insert(), resourceBundle.insert(),
+      framework.insert(), faqs.insert(),
+      channel.insert(), form.insert(),
+      form.insert(), page.insert(), location.insert()]);
   }
 }
 

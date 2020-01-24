@@ -21,7 +21,7 @@ export class Faqs {
       this.faqsBasePath = this.fileSDK.getAbsPath(path.join("data", "faqs"));
   }
   public async insert() {
-    const files = await this.fileSDK.readdir(this.faqsBasePath);
+    const files = await this.fileSDK.readdir(path.join("data", "faqs"));
     const dbData = await this.databaseSdk.list(FAQS_DB, {limit: 1});
     logger.log("--Inserting faqs to db--", dbData.total_rows, files.length);
     if (!dbData.total_rows && files.length) {

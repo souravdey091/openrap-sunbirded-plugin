@@ -71,7 +71,7 @@ export const getErrorObj = (error, errCode = "UNHANDLED_ERROR") => {
   return new ErrorObj(errCode, error.message);
 };
 export const handelError = (errCode) => {
-  return (error: Error) => {
+  return (error: Error | ErrorObj) => {
     throw getErrorObj(error, errCode);
   };
 };

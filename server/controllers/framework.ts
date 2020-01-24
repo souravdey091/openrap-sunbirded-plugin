@@ -23,7 +23,7 @@ export class Framework {
     try {
       const files =  await this.fileSDK.readdir(path.join("data", "frameworks"));
       const frameworksFilesBasePath = this.fileSDK.getAbsPath(path.join("data", "frameworks"));
-      let frameworksList =  await this.databaseSdk.list("framework", {startkey: "_design0"});
+      let frameworksList =  await this.databaseSdk.list("framework", {});
       frameworksList = _.get(frameworksList, "rows");
       const frameworksListLength = frameworksList ? frameworksList.length : 0;
       const frameworkDocs = [];

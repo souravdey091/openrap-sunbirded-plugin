@@ -53,7 +53,7 @@ export default class Content {
         this.getDeviceId();
     }
 
-    searchInDB(filters, reqId, sort?) {
+    searchInDB(filters, reqId, sort?, visibility?) {
         logger.debug(`ReqId = "${reqId}": Contents are searching in ContentDb with given filters`)
         let modifiedFilters: Object = _.mapValues(filters, (v, k) => {
             if (k !== 'query') return ({ '$in': v })
@@ -65,7 +65,7 @@ export default class Content {
                 "$regex": new RegExp(_.get(filters, 'query'), 'i')
             }
         }
-        modifiedFilters['visibility'] = 'Default';
+        modifiedFilters['visibility'] = _.isEmpty(visibility) ? "Default" : visibility;
         modifiedFilters['$or'] = [
             {"desktopAppMetadata.isAvailable": { $exists: false}},
             {"desktopAppMetadata.isAvailable": { $eq: true}}
@@ -95,6 +95,8 @@ export default class Content {
                 logger.debug(`ReqId = "${req.headers['X-msgid']}": Get Content: ${id} from ContentDB`);
                 let content = await this.databaseSdk.get('content', id);
                 content = _.omit(content, ['_id', '_rev']);
+                if (!_.has(content.desktopAppMetadata, "isAvailable") ||
+                content.desktopAppMetadata.isAvailable) {
                 let resObj = {};
                 logger.debug(`ReqId = "${req.headers['X-msgid']}": Call isUpdateRequired()`)
                 if (this.isUpdateRequired(content, req)) {
@@ -106,6 +108,10 @@ export default class Content {
                     resObj['content'] = content;
                     return res.send(Response.success('api.content.read', resObj, req));
                 }
+            } else {
+                res.status(404);
+                return res.send(Response.error('api.content.read', 404));
+            }
             } catch (error) {
                 logger.error(
                     `ReqId = "${req.headers['X-msgid']}": Received error while getting the data from content database and err.message: ${error}`
@@ -260,23 +266,28 @@ export default class Content {
             );
             childNode = dbChildResponse.docs;
         }
-        const contentExport = new ExportContent(destFolder, content, childNode);
-        contentExport.export((err, data) => {
-            if (err) {
-                res.status(500);
-                return res.send(Response.error("api.content.export", 500));
-            }
-            // Adding telemetry share event
-            const exportedChildContentCount = childNode.length - data.skippedContent.length;
-            this.constructShareEvent(content, exportedChildContentCount);
-
-            res.status(200);
-            res.send(Response.success(`api.content.export`, {
-                    response: {
-                        ecarFilePath: data.ecarFilePath,
-                    },
-                }, req));
-        });
+        if (!_.has(content.desktopAppMetadata, "isAvailable") ||
+        content.desktopAppMetadata.isAvailable) {
+            const contentExport = new ExportContent(destFolder, content, childNode);
+            contentExport.export((err, data) => {
+                if (err) {
+                    res.status(500);
+                    return res.send(Response.error("api.content.export", 500));
+                }
+                // Adding telemetry share event
+                const exportedChildContentCount = childNode.length - data.skippedContent.length;
+                this.constructShareEvent(content, exportedChildContentCount);
+                res.status(200);
+                res.send(Response.success(`api.content.export`, {
+                        response: {
+                            ecarFilePath: data.ecarFilePath,
+                        },
+                    }, req));
+            });
+        } else {
+            res.status(404);
+            return res.send(Response.error("api.content.export", 404));
+        }
     }
 
     public async getDeviceId() {
@@ -352,41 +363,20 @@ export default class Content {
     async decorateContentWithProperty(contents, reqId) {
         logger.debug(`ReqId = "${reqId}": Called decorateContent to decorate content`)
         try {
-            let listOfContentIds = [];
+            const listOfContentIds = [];
             logger.info(`ReqId = "${reqId}": Pushing all the contentId's to an Array for all the requested Contents`)
-            for (let content of contents) {
+            for (const content of contents) {
                 listOfContentIds.push(content.identifier);
             }
             logger.debug(`ReqId = "${reqId}": Search downloaded and downloading  contents in DB using content Id's`)
-            await this.searchDownloadingContent(listOfContentIds, reqId)
-                .then( async (data) => {
-                    const deletedContents = await this.getDeletedContents();
-                    logger.info(`ReqId = "${reqId}": Found the ${data.docs.length} contents in Content_Download Db`)
-                    data.docs = _.uniqBy(_.orderBy(data.docs, ["updatedOn"], ["desc"]), "contentId");
-                    data.docs = _.differenceBy(data.docs, deletedContents.docs, "identifier");
-                    for (let doc of data.docs) {
-                        for (let content of contents) {
-                            if (doc.contentId === content.identifier) {
-                                content.downloadStatus = DOWNLOAD_STATUS[doc.status];
-                            }
-                        }
-                    }
-                })
-                .catch(err => {
-                    console.log(err);
-                    logger.error(
-                        `ReqId = "${reqId}": Received error while getting the data from database and err.message: ${
-                        err.message
-                        } ${err}`
-                    );
-                    return contents;
-                });
+            const contentsInDownload = await this.searchDownloadingContent(listOfContentIds, reqId);
+            const contentsInDB = await this.getOfflineContents(listOfContentIds, reqId);
+            contents =  this.changeContentStatus(contentsInDownload.docs, contentsInDB.docs, contents);
+            return contents;
         } catch (err) {
-            console.log(err);
             logger.error(`ReqId = "${reqId}": Received  error err.message: ${err.message} ${err}`);
             return contents;
         }
-        return contents;
     }
 
     /* This method is to check dialcode contents present in DB */
@@ -456,13 +446,31 @@ export default class Content {
         })
     }
 
-    async getDeletedContents() {
+    async getOfflineContents(contentsIds: string[], reqId: string) {
         const dbFilter = {
             selector: {
-                "desktopAppMetadata.isAvailable": { $eq: false}
-                    },
-            };
+                identifier: {
+                    $in: contentsIds,
+                },
+            },
+            fields: ["desktopAppMetadata", "downloadStatus", "identifier"],
+        };
         return await this.databaseSdk.find("content", dbFilter);
+    }
+
+    changeContentStatus(contentsInDownload, offlineContents, contents) {
+        for (const content of offlineContents) {
+            if (!_.has(content, "desktopAppMetadata.isAvailable") || content.desktopAppMetadata.isAvailable) {
+                const data = _.find(contentsInDownload, { identifier: content.identifier })
+                content.downloadStatus = !_.isEmpty(_.get(data, 'status')) ? DOWNLOAD_STATUS[data["status"]] : '';
+            }
+        }
+        for (const content of contents) {
+            const data = _.find(offlineContents, { identifier: content.identifier });
+            content["downloadStatus"] = _.get(data, 'downloadStatus');
+            content["desktopAppMetadata"] = _.get(data, 'desktopAppMetadata');
+        }
+        return contents;
     }
 
 }

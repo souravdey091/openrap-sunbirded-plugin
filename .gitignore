@@ -9,3 +9,4 @@ server/test_data/database/*
 server/test_data/log
 server/coverage
 server/.nyc_output
+server/test_data/export_contents
