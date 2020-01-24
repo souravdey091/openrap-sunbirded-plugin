@@ -4,32 +4,38 @@ import { Inject } from "typescript-ioc";
 import * as path from "path";
 import DatabaseSDK from "../../sdk/database";
 import { logger } from "@project-sunbird/ext-framework-server/logger";
-import { containerAPI } from "OpenRAP/dist/api";
+import { containerAPI, ISystemQueue, ITaskExecuter } from "OpenRAP/dist/api";
 import { manifest } from "../../manifest";
 import { IAddedUsingType } from "../../controllers/content/IContent";
 import * as  _ from "lodash";
+import { Subject, Observer } from "rxjs";
 
-export class ImportContent {
 
+export class ImportContent implements ITaskExecuter {
+  public static taskType = "IMPORT";
   private workerProcessRef: childProcess.ChildProcess;
   private fileSDK: any;
   @Inject private dbSDK: DatabaseSDK;
   private manifestJson: any;
   private interrupt;
+  private contentImportData: ISystemQueue;
+  private observer;
 
-  constructor(private contentImportData: IContentImport, private cb) {
-    this.dbSDK.initialize(manifest.id);
-    this.fileSDK = containerAPI.getFileSDKInstance(manifest.id);
-  }
+  // constructor(private contentImportData: IContentImport, private cb) {
+  //   this.dbSDK.initialize(manifest.id);
+  //   this.fileSDK = containerAPI.getFileSDKInstance(manifest.id);
+  // }
 
-  public async startImport(step = this.contentImportData.importStep) {
+  public async start(contentImportData, observer: Observer<ISystemQueue>) {
+    this.contentImportData = contentImportData;
+    this.observer = observer;
     this.workerProcessRef = childProcess.fork(path.join(__dirname, "contentImportHelper"));
     this.handleChildProcessMessage();
     this.handleWorkerCloseEvents();
     this.contentImportData.status = ImportStatus.inProgress;
     this.contentImportData.progress = 0;
     await this.syncStatusToDb();
-    switch (step) {
+    switch (this.contentImportData.step) {
       case ImportSteps.copyEcar: {
         this.workerProcessRef.send({
           message: this.contentImportData.importStep,
@@ -57,8 +63,11 @@ export class ImportContent {
         break;
       }
     }
+    return true;
   }
-
+  public status() {
+    return this.contentImportData;
+  }
   public cleanUpAfterErrorOrCancel() {
     this.fileSDK.remove(path.join("ecars", this.contentImportData._id + ".ecar")).catch((err) => logger.debug(`Error while deleting file ${path.join("ecars", this.contentImportData._id + ".ecar")}`));
     this.fileSDK.remove(path.join("content", this.contentImportData._id)).catch((err) => logger.debug(`Error while deleting folder ${path.join("content", this.contentImportData._id)}`));
@@ -125,7 +134,8 @@ export class ImportContent {
       logger.error(this.contentImportData._id, "Error while processContents ", err);
       this.contentImportData.status = ImportStatus.failed;
       await this.syncStatusToDb();
-      this.cb("ERROR", this.contentImportData);
+      this.observer.next(this.contentImportData);
+      this.observer.error(err);
       this.cleanUpAfterErrorOrCancel();
     }
   }
@@ -146,14 +156,16 @@ export class ImportContent {
       this.contentImportData.status = ImportStatus.completed;
       logger.info("--------import complete-------", JSON.stringify(this.contentImportData));
       await this.syncStatusToDb();
-      this.cb(null, this.contentImportData);
+      this.observer.next(this.contentImportData);
     } catch (err) {
       logger.error(this.contentImportData._id, "Error while processContents for ", err);
       this.contentImportData.status = ImportStatus.failed;
       this.contentImportData.failedCode = err.errCode || "CONTENT_SAVE_FAILED";
       this.contentImportData.failedReason = err.errMessage;
       await this.syncStatusToDb();
-      this.cb("ERROR", this.contentImportData);
+      this.observer.next(this.contentImportData);
+      this.observer.error(err);
+
       this.cleanUpAfterErrorOrCancel();
     } finally {
       this.workerProcessRef.kill();
@@ -273,7 +285,8 @@ export class ImportContent {
     this.contentImportData.failedReason = err.errMessage;
     this.contentImportData.status = ImportStatus.failed;
     await this.syncStatusToDb();
-    this.cb(err, this.contentImportData);
+    // this.cb(err, this.contentImportData);
+    this.observer.error(this.contentImportData);
     this.cleanUpAfterErrorOrCancel();
   }
 

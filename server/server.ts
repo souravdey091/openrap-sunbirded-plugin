@@ -17,7 +17,7 @@ import { Location } from './controllers/location';
 import DatabaseSDK from "./sdk/database";
 import config from "./config";
 import { logger } from "@project-sunbird/ext-framework-server/logger";
-import { containerAPI } from "OpenRAP/dist/api";
+import { containerAPI, ISystemQueueInstance  } from "OpenRAP/dist/api";
 import  ContentDelete from "./controllers/content/contentDelete";
 import {
   addContentListener,
@@ -25,7 +25,7 @@ import {
 } from "./controllers/content/contentHelper";
 import * as _ from "lodash";
 import { EventManager } from "@project-sunbird/ext-framework-server/managers/EventManager";
-
+import {ImportContent} from "./manager/contentImportManager/contentImport";
 export class Server extends BaseServer {
   private sunbirded_plugin_initialized = false;
   private ecarsFolderPath: string = "ecars";
@@ -43,8 +43,10 @@ export class Server extends BaseServer {
   @Inject
   private contentDelete: ContentDelete;
 
+  private systemQueue: ISystemQueueInstance;
   constructor(manifest: Manifest) {
     super(manifest);
+    this.systemQueue = containerAPI.getSystemQueueInstance(manifest.id);
 
     // Added timeout since db creation is async and it is taking time and insertion is failing
     this.fileSDK = containerAPI.getFileSDKInstance(manifest.id);
@@ -64,7 +66,8 @@ export class Server extends BaseServer {
       });
   }
   async initialize(manifest: Manifest) {
-    //registerAcrossAllSDKS()
+    this.systemQueue.register(ImportContent.taskType, ImportContent);
+    //registerAcrossAllSDKS()    
     this.databaseSdk.initialize(manifest.id);
     this.contentDelete = new ContentDelete(manifest);
     frameworkAPI.registerStaticRoute(
