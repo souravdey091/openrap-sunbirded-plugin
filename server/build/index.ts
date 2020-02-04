@@ -13,7 +13,6 @@ const init = async () => {
     // await getChannel()
     // await frameworks()
     // await getForms()
-    // await getPageSections()
 };
 
 const getOrgs = async () => {
@@ -61,23 +60,6 @@ const getForms = async () => {
         const filename = `${data.type}_${data.subType}_${data.action}_${data.rootOrgId}`;
         await fse.ensureFile(path.join(filesPath, config.forms.dest_folder, filename + ".json"));
         await fse.writeJson(path.join(filesPath, config.forms.dest_folder, filename + ".json"), result.data);
-    }
-};
-
-const getPageSections = async () => {
-    for (const data of config.pages.requests_data) {
-        const requestData = {
-            request: data,
-        };
-        const result = await axios.post(baseUrl + config.pages.url,
-            requestData);
-        result.data.result.response.sections.forEach((s) => {
-            s.count = 0;
-            s.contents = null;
-        });
-        const filename = `${data.source}_${data.name}`;
-        await fse.ensureFile(path.join(filesPath, config.pages.dest_folder, filename + ".json"));
-        await fse.writeJson(path.join(filesPath, config.pages.dest_folder, filename + ".json"), result.data);
     }
 };
 

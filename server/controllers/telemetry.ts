@@ -52,26 +52,32 @@ export default class Telemetry {
     }
   }
 
-  public getTelemetryInfo(req, res) {
-    try {
-      const resObj = {
-        lastSharedDate: Date.now(),
-        size: `500KB`,
-      };
-      return res.send(Response.success("api.telemetry.info", resObj, req));
-    } catch (error) {
-      res.status(500);
-      return res.send(Response.error("api.telemetry.info", 500, error.message || ""));
-    }
+  public getInfo(req, res) {
+    this.telemetrySDK.info((err, data) => {
+      if (err) {
+        res.status(err.status || 500);
+        return res.send(Response.error("api.telemetry.info", err.status || 500
+        , err.errMessage || err.message, err.code));
+      }
+      res.status(200);
+      res.send(Response.success(`api.telemetry.info`, {
+        response: data,
+      }, req));
+    });
   }
 
-  public exportTelemetry(req, res) {
-    try {
-      return res.send(Response.success("api.telemetry.export", {}, req));
-    } catch (error) {
-      res.status(500);
-      return res.send(Response.error("api.telemetry.export", 500,  error.message || ""));
-    }
+  public export(req, res) {
+    const destFolder = req.query.destFolder;
+    this.telemetrySDK.export(destFolder, (err, data) => {
+      if (err) {
+        res.status(err.status || 500);
+        return res.send(Response.error("api.telemetry.export", err.status || 500, err.errMessage
+        || err.message, err.code));
+      }
+      res.status(200);
+      res.send(Response.success(`api.telemetry.export`, {
+        response: data,
+      }, req));
+    });
   }
-
 }

@@ -1,6 +1,6 @@
 {
   "name": "openrap-sunbirded-plugin",
-  "version": "0.0.53",
+  "version": "0.0.58",
   "description": "This plugin provides api's for offline consumption",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,7 +10,7 @@
     "test": "tslint **/*.ts && npm run post-test && npm run pre-test &&  nyc --reporter=html --reporter=text mocha --timeout 10000 --exit -r ts-node/register **/**/*.spec.ts **/*.spec.ts *.spec.ts --exclude **/node_modules/** && npm run post-test",
     "post-test": "rimraf test test_data/openrap-sunbirded-plugin/content test_data/openrap-sunbirded-plugin/ecars test_data/openrap-sunbirded-plugin/telemetry_archived test_data/database/* test_data/log test_data/export_contents/* ",
     "prepare-data": "node_modules/.bin/rimraf ./dist && tsc --noImplicitUseStrict &&  node ./dist/build/index.js",
-    "lint": "tslint **/*.ts --fix"
+    "lint": "tslint --fix ./**/*.ts"
   },
   "nyc": {
     "extension": [
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "busboy": "^0.3.0",
+    "cheerio": "^1.0.0-rc.3",
     "decompress-zip": "^0.2.2",
     "ejs": "^2.6.1",
     "express-http-proxy": "^1.5.1",
@@ -48,7 +49,8 @@
     "node-stream-zip": "^1.8.2",
     "tree-model": "^1.0.7",
     "typescript-ioc": "^1.2.5",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "web-resource-inliner": "^4.3.4"
   },
   "devDependencies": {
     "@project-sunbird/ext-framework-server": "0.1.26",
@@ -65,7 +67,7 @@
     "@types/node": "^11.11.3",
     "@types/unzipper": "^0.9.1",
     "@types/uuid": "^3.4.4",
-    "OpenRAP": "git://github.com/project-sunbird/OpenRAP.git#release-2.7.0",
+    "OpenRAP": "git://github.com/project-sunbird/OpenRAP.git#release-2.8.0",
     "axios": "^0.19.0",
     "body-parser": "^1.18.2",
     "chai": "^4.2.0",

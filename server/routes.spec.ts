@@ -873,91 +873,20 @@ describe("App Update", () => {
     });
 });
 
-describe("Test Page assemble with and without referrer", () => {
-    it("#Page assemble", (done) => {
+describe("Test System Info", () => {
+    it("#get System Info", (done) => {
         supertest(app)
-            .post("/api/data/v1/page/assemble")
-            .send({ request: { source: "web", name: "Explore", filters: { channel: "505c7c48ac6dc1edc9b08f21db5a571d",
-            board: ["TEST_BOARD"]}, softConstraints: { badgeAssertions: 98, board: 99, channel: 100 }, mode: "soft" }})
+            .get("/api/desktop/v1/system-info")
             .expect(200)
             .end((err, res) => {
-                if (res.statusCode >= 500) { logger.error(err); return done(); }
-                if (err && res.statusCode >= 400) { return done(); }
-                expect(res.body.id).to.equal("api.page.assemble").to.be.a("string");
-                expect(res.body.ver).to.equal("1.0").to.be.a("string");
-                expect(res.body.result.response.id).to.be.a("string");
-                expect(res.body.result.response.name).to.equal("Explore").to.be.a("string");
+                console.log("res.body.result", res.body.result);
+                expect(res.body.result.totalMemory).to.be.a("number");
+                expect(res.body.result.availableMemory).to.a("number");
                 done();
             });
     });
-
-    it("#Set Referrer for Page assemble", (done) => {
-        supertest(app)
-            .post("/api/data/v1/page/assemble")
-            .set("Referer", `${process.env.APP_BASE_URL}/browse`)
-            .send({ request: { source: "web", name: "Explore", filters: { channel: "505c7c48ac6dc1edc9b08f21db5a571d",
-            board: ["TEST_BOARD"] }, softConstraints: { badgeAssertions: 98, board: 99, channel: 100 }, mode: "soft" }})
-            .expect(200)
-            .end((err, res) => {
-                if (res.statusCode >= 500) { logger.error(err); return done(); }
-                if (err && res.statusCode >= 400) { return done(); }
-                expect(res.body.responseCode).to.equal("OK");
-                expect(res.body.id).to.equal("api.page.assemble").to.be.a("string");
-                expect(res.body.ver).to.oneOf(["v1", "1.0"]).to.be.a("string");
-                expect(res.body.result.response.id).to.be.a("string");
-                expect(res.body.result.response.name).to.equal("Explore").to.be.a("string");
-                done();
-            });
-    });
-
-    it("#Set Referrer for Page assemble  (ERROR)", (done) => {
-        supertest(app)
-            .post("/api/data/v1/page/assemble")
-            .set("Referer", `${process.env.APP_BASE_URL}/browse`)
-            .send({})
-            .expect(400)
-            .end((err, res) => {
-                if (res.statusCode >= 500) { logger.error(err); return done(); }
-                if (err && res.statusCode >= 400) { return done(); }
-                expect(res.body.responseCode).to.equal("CLIENT_ERROR");
-                expect(res.body.id).to.equal("api.page.assemble").to.be.a("string");
-                expect(res.body.ver).to.oneOf(["v1", "1.0"]).to.be.a("string");
-                done();
-            });
-    });
-
-    it("#Page assemble mode (ERROR)", (done) => {
-        supertest(app)
-            .post("/api/data/v1/page/assemble")
-            .send({ request: { source: "web", name: "Explore", filters: { channel: "505c7c48ac6dc1edc9b08f21db5a571d",
-            board: ["TEST_BOARD"] }, softConstraints: { badgeAssertions: 98, board: 99, channel: 100 } } })
-            .expect(404)
-            .end((err, res) => {
-                if (res.statusCode >= 500) { logger.error(err); return done(); }
-                if (err && res.statusCode >= 400) { return done(); }
-                expect(res.body.id).to.equal("api.page.assemble").to.be.a("string");
-                expect(res.body.ver).to.equal("1.0").to.be.a("string");
-                expect(res.body.result.response.id).to.be.a("string");
-                expect(res.body.result.response.name).to.equal("Explore").to.be.a("string");
-                done();
-            });
-    });
-
-    it("#Page assemble  Name (ERROR)", (done) => {
-        supertest(app)
-            .post("/api/data/v1/page/assemble")
-            .send({ request: { "(source)": "web", "name": "EXPLORE_PAGE" } })
-            .expect(404)
-            .end((err, res) => {
-                if (res.statusCode >= 500) { logger.error(err); return done(); }
-                if (err && res.statusCode >= 400) { return done(); }
-                expect(res.body.id).to.equal("api.page.assemble").to.be.a("string");
-                expect(res.body.ver).to.equal("1.0").to.be.a("string");
-                done();
-            });
-    });
-
 });
+
 
 describe("Test Import Content/Collection", () => {
 
@@ -1111,6 +1040,21 @@ describe("Test Import Content/Collection", () => {
             done();
         });
     });
+
+    it("#Import Collections ", (done) => {
+        const filePath = [`${__dirname}/test_data/to_import_contents/TextBookTest.ecar`];
+        const req = supertest(app).post("/api/content/v1/import");
+        req.send(filePath);
+        req.expect(200);
+        req.end((err, res) => {
+            expect(res.body.id).to.equal("api.content.import").to.be.a("string");
+            expect(res.body.ver).to.equal("1.0").to.be.a("string");
+            expect(res.body.result.importedJobIds).to.be.an("array");
+            expect(res.body.result).to.have.property("importedJobIds");
+            done();
+        });
+    }).timeout(30000);
+
     it("#Import Content List", (done) => {
         const interval = setInterval(() => {
             supertest(app)
@@ -1160,26 +1104,7 @@ describe("Read and update content / collection", () => {
             });
     }).timeout(10000);
 
-    it("#Import v1 content import (collection update available)", (done) => {
-        const filePath = `${__dirname}/test_data/to_import_contents/Maths_VI6.ecar`;
-        const req = supertest(app).post("/api/content/v1/import");
-        req.send([filePath]);
-        req.expect(200);
-        req.end((err, res) => {
-            if (res.statusCode >= 500) {
-                logger.error(err);
-                return done();
-            }
-            if (err && res.statusCode >= 400) {
-                return done();
-            }
-            expect(res.body.id).to.equal("api.content.import").to.be.a("string");
-            expect(res.body.ver).to.equal("1.0").to.be.a("string");
-            expect(res.body.result.importedJobIds).to.be.an("array");
-            expect(res.body.result).to.have.property("importedJobIds");
-            done();
-        });
-    }).timeout(10000);
+
 
     xit("#update CONTENT inside collection", (done) => {
         supertest(app)
@@ -1201,6 +1126,13 @@ describe("Read and update content / collection", () => {
             .set("Content-Type", "application/json/")
             .expect(200)
             .end((err, res) => {
+                if (res.statusCode >= 500) {
+                    logger.error(err);
+                    return done();
+                }
+                if (err && res.statusCode >= 400) {
+                    return done();
+                }
                 expect(res.body.responseCode).to.equal("OK");
                 expect(res.body.id).to.equal("api.content.read").to.be.a("string");
                 expect(res.body.ver).to.equal("1.0").to.be.a("string");
@@ -1402,16 +1334,16 @@ describe("Test Download content / collection", () => {
                 .send({})
                 .expect(200)
                 .end((err, res) => {
+
                     if (res.statusCode >= 500) { logger.error(err); return done(); }
                     if (err && res.statusCode >= 400) {  return done(); }
                     expect(res.body.result.response.contents).to.be.an("array");
-                    expect(res.body.result.response.contents[0]).to.have.property("contentId");
-                    expect(res.body.result.response.contents[0]).to.have.property("resourceId");
+                    expect(res.body.result.response.contents[0]).to.have.any.keys("status", "resourceId", "contentId");
                     clearInterval(interval);
                     done();
                 });
         }, 2000);
-    }).timeout(210000);
+    }).timeout(310000);
 
     it("#Pause Download Content", (done) => {
         supertest(app)
@@ -1552,9 +1484,9 @@ describe("Export content / collection", () => {
     fs.mkdirSync(dir);
     }
     const filePath = `${__dirname}/test_data/export_contents`;
-    it("#Export Content", (done) => {
+    xit("#Export Content", (done) => {
         supertest(app)
-            .get("/api/content/v1/export/do_112835335135993856149")
+            .get("/api/content/v1/export/do_112832394979106816112")
             .set("Accept", "application/json")
             .query({destFolder: filePath})
             .expect("Content-Type", "application/json; charset=utf-8")
@@ -1571,9 +1503,9 @@ describe("Export content / collection", () => {
             });
     }).timeout(1000);
 
-    it("#Export Collection", (done) => {
+    xit("#Export Collection", (done) => {
         supertest(app)
-            .get("/api/content/v1/export/do_312473549722288128119665")
+            .get("/api/content/v1/export/do_11275905761520025614")
             .query({destFolder: filePath})
             .set("Accept", "application/json")
             .expect("Content-Type", "application/json; charset=utf-8")
@@ -1605,7 +1537,7 @@ describe("Delete content / collection", () => {
             expect(res.body.result).to.have.property("importedJobIds");
             done();
         });
-    }).timeout(20000);
+    }).timeout(2000);
 
     it("#Import Content List", (done) => {
         const interval = setInterval(() => {
@@ -1623,13 +1555,15 @@ describe("Delete content / collection", () => {
         }, 2000);
     }).timeout(210000);
 
-    it(`#Delete collection`, (done) => {
+    xit(`#Delete collection`, (done) => {
         supertest(app)
         .post("/api/content/v1/delete")
         .send({request: {contents: ["do_11275905761520025614"]}})
         .expect("Content-Type", "application/json; charset=utf-8")
         .expect(200)
         .end((err, res) => {
+                if (res.statusCode >= 500) { logger.error(err); return done(); }
+                if (err && res.statusCode >= 400) {  return done(); }
                 expect(res.body.id).to.equal("api.content.delete");
                 expect(res.body.result.deleted).to.contain("do_11275905761520025614").to.be.an("array");
                 expect(res.body.result.failed).to.be.an("array");
@@ -1637,13 +1571,15 @@ describe("Delete content / collection", () => {
             });
     });
 
-    it(`#Delete content`, (done) => {
+    xit(`#Delete content`, (done) => {
         supertest(app)
         .post("/api/content/v1/delete")
         .send({request: {contents: ["do_112832394979106816112"]}})
         .expect("Content-Type", "application/json; charset=utf-8")
         .expect(200)
         .end((err, res) => {
+                if (res.statusCode >= 500) { logger.error(err); return done(); }
+                if (err && res.statusCode >= 400) {  return done(); }
                 expect(res.body.id).to.equal("api.content.delete");
                 expect(res.body.result.deleted).to.contain("do_112832394979106816112").to.be.an("array");
                 expect(res.body.result.failed).to.be.an("array");
@@ -1667,6 +1603,38 @@ describe("Delete content / collection", () => {
     });
 });
 
+describe('Telemetry Info', () => {
+
+    it("#add get telemetry info", (done) => {
+        supertest(app)
+            .get("/api/telemetry/v1/info")
+            .expect(200)
+            .end((err, res) => {
+
+                if (res.statusCode >= 500) { logger.error(err); return done(); }
+                if (err && res.statusCode >= 400) { return done(); }
+                expect(res.body.id).to.equal("api.telemetry.info").to.be.a("string");
+                expect(res.body.ver).to.equal("1.0").to.be.a("string");
+                expect(res.body.result.response).to.haveOwnProperty("totalSize").and.to.be.a("number");
+                expect(res.body.result.response).to.haveOwnProperty("lastExportedOn");
+                done();
+
+            });
+    });
+
+    it("#export telemetry", (done) => {
+        supertest(app)
+            .post("/api/telemetry/v1/export")
+            .send({})
+            .expect(500)
+            .end((err, res) => {
+                expect(res.body.id).to.equal("api.telemetry.export").to.be.a("string");
+                expect(res.body.ver).to.equal("1.0").to.be.a("string");
+                expect(res.body.params.errmsg).to.equal("Destination path is missing");
+                done();
+            });
+    });
+});
 
 after("Disconnect Server", (done) => {
     server.close();

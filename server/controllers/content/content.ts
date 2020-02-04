@@ -49,7 +49,7 @@ export default class Content {
         this.getDeviceId();
     }
 
-    searchInDB(filters, reqId, sort?, visibility?) {
+    searchInDB(filters, reqId, sort?) {
         logger.debug(`ReqId = "${reqId}": Contents are searching in ContentDb with given filters`)
         let modifiedFilters: Object = _.mapValues(filters, (v, k) => {
             if (k !== 'query') return ({ '$in': v })
@@ -61,7 +61,7 @@ export default class Content {
                 "$regex": new RegExp(_.get(filters, 'query'), 'i')
             }
         }
-        modifiedFilters['visibility'] = _.isEmpty(visibility) ? "Default" : visibility;
+        modifiedFilters['visibility'] = "Default";
         modifiedFilters['$or'] = [
             {"desktopAppMetadata.isAvailable": { $exists: false}},
             {"desktopAppMetadata.isAvailable": { $eq: true}}

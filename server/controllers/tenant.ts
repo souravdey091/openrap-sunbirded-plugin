@@ -6,7 +6,7 @@ export default class Tenant {
     const resObj = {
       appLogo: "/appLogo.png",
       favicon: "/favicon.ico",
-      logo: "/logo.png",
+      logo: "/logo.svg",
       titleName: process.env.APP_NAME,
     };
     logger.info(`ReqId = "${req.headers["X-msgid"]}": Received Tenant Info`);

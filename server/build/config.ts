@@ -38,22 +38,6 @@ const config = {
         ],
         dest_folder: "forms",
     },
-    pages: {
-        url: "api/data/v1/page/assemble",
-        requests_data: [
-            {
-                source: "web",
-                name: "Explore",
-                filters: {
-                    channel: "505c7c48ac6dc1edc9b08f21db5a571d",
-                    board: ["CBSE"],
-                },
-                softConstraints: { badgeAssertions: 98, board: 99, channel: 100 },
-                mode: "soft",
-            },
-        ],
-        dest_folder: "pages",
-    },
     location: {
         url: "api/data/v1/location/search",
         dest_folder: "location",

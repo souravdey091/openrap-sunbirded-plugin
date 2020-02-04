@@ -1,15 +1,17 @@
-import { Inject } from "typescript-ioc";
-import DatabaseSDK from "../../sdk/database";
-import * as _ from 'lodash';
-import Response from '../../utils/response';
+import { logger } from "@project-sunbird/ext-framework-server/logger";
 import { Manifest } from "@project-sunbird/ext-framework-server/models";
 import { logger } from '@project-sunbird/ext-framework-server/logger';
 import { containerAPI, ISystemQueueInstance } from "OpenRAP/dist/api";
 import { HTTPService } from "@project-sunbird/ext-framework-server/services";
+import * as _ from "lodash";
+import { containerAPI } from "OpenRAP/dist/api";
 import * as path from "path";
-import { ImportStatus, IContentImport } from "../../manager/contentImportManager"
-import { IAddedUsingType } from '../../controllers/content/IContent';
+import { Inject } from "typescript-ioc";
+import { IAddedUsingType } from "../../controllers/content/IContent";
 import TelemetryHelper from "../../helper/telemetryHelper";
+import { IContentImport, ImportStatus } from "../../manager/contentImportManager";
+import DatabaseSDK from "../../sdk/database";
+import Response from "../../utils/response";
 const sessionStartTime = Date.now();
 export enum CONTENT_DOWNLOAD_STATUS {
     Submitted = "SUBMITTED",
@@ -40,11 +42,11 @@ enum API_DOWNLOAD_STATUS {
     canceled = "CANCELED",
 }
 
-let dbName = "content_download";
+const dbName = "content_download";
 export default class ContentDownload {
 
-    private contentsFilesPath: string = 'content';
-    private ecarsFolderPath: string = 'ecars';
+    private contentsFilesPath: string = "content";
+    private ecarsFolderPath: string = "ecars";
 
     @Inject
     private databaseSdk: DatabaseSDK;
@@ -63,142 +65,133 @@ export default class ContentDownload {
         this.systemQueue = containerAPI.getSystemQueueInstance(manifest.id);
     }
 
-    download(req: any, res: any): any {
+    public download(req: any, res: any): any {
         (async () => {
             try {
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Content Download method is called`);
+                logger.debug(`ReqId = "${req.headers["X-msgid"]}": Content Download method is called`);
                 // get the content using content read api
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Get the content using content read api`)
-                let content = await HTTPService.get(`${process.env.APP_BASE_URL}/api/content/v1/read/${req.params.id}`, {}).toPromise()
-                logger.info(`ReqId = "${req.headers['X-msgid']}": Content: ${_.get(content, 'data.result.content.identifier')} found from content read api`);
-                if (_.get(content, 'data.result.content.mimeType')) {
+                logger.debug(`ReqId = "${req.headers["X-msgid"]}": Get the content using content read api`);
+                const content = await HTTPService.get(`${process.env.APP_BASE_URL}/api/content/v1/read/${req.params.id}`, {}).toPromise();
+                logger.info(`ReqId = "${req.headers["X-msgid"]}": Content: ${_.get(content, "data.result.content.identifier")} found from content read api`);
+                if (_.get(content, "data.result.content.mimeType")) {
                     // Adding telemetry share event
                     this.constructShareEvent(content);
                     // check if the content is type collection
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": check if the content is of type collection`)
-                    if (_.get(content, 'data.result.content.mimeType') !== "application/vnd.ekstep.content-collection") {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found content:${_.get(content, 'data.result.content.mimeType')} is not of type collection`)
+                    logger.debug(`ReqId = "${req.headers["X-msgid"]}": check if the content is of type collection`);
+                    if (_.get(content, "data.result.content.mimeType") !== "application/vnd.ekstep.content-collection") {
+                        logger.info(`ReqId = "${req.headers["X-msgid"]}": Found content:${_.get(content, "data.result.content.mimeType")} is not of type collection`);
                         // insert to the to content_download_queue
                         // add the content to queue using downloadManager
                         const zipSize = (_.get(content, "data.result.content.size") as number);
                         await this.checkDiskSpaceAvailability(zipSize, false);
-                        let downloadFiles = [{
+                        const downloadFiles = [{
                             id: (_.get(content, "data.result.content.identifier") as string),
                             url: (_.get(content, "data.result.content.downloadUrl") as string),
-                            size: (_.get(content, "data.result.content.size") as number)
-                        }]
-                        let downloadId = await this.downloadManager.download(downloadFiles, 'ecars')
-                        let queueMetaData = {
-                            mimeType: _.get(content, 'data.result.content.mimeType'),
+                            size: (_.get(content, "data.result.content.size") as number),
+                        }];
+                        const downloadId = await this.downloadManager.download(downloadFiles, "ecars");
+                        const queueMetaData = {
+                            mimeType: _.get(content, "data.result.content.mimeType"),
                             items: downloadFiles,
-                            pkgVersion: _.get(content, 'data.result.content.pkgVersion'),
-                            contentType: _.get(content, 'data.result.content.contentType'),
-                            resourceId: _.get(content, "data.result.content.identifier")
-                        }
-                        logger.debug(`ReqId = "${req.headers['X-msgid']}": insert to the content_download_queue`);
+                            pkgVersion: _.get(content, "data.result.content.pkgVersion"),
+                            contentType: _.get(content, "data.result.content.contentType"),
+                            resourceId: _.get(content, "data.result.content.identifier"),
+                        };
+                        logger.debug(`ReqId = "${req.headers["X-msgid"]}": insert to the content_download_queue`);
                         await this.databaseSdk.insert(dbName, {
-                            downloadId: downloadId,
+                            downloadId,
                             contentId: _.get(content, "data.result.content.identifier"),
                             identifier: _.get(content, "data.result.content.identifier"),
                             name: _.get(content, "data.result.content.name"),
                             status: CONTENT_DOWNLOAD_STATUS.Submitted,
-                            queueMetaData: queueMetaData,
+                            queueMetaData,
                             createdOn: Date.now(),
                             updatedOn: Date.now(),
-                            size: (_.get(content, "data.result.content.size") as number)
-                        })
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Content Inserted in Database Successfully`);
+                            size: (_.get(content, "data.result.content.size") as number),
+                        });
+                        logger.info(`ReqId = "${req.headers["X-msgid"]}": Content Inserted in Database Successfully`);
                         return res.send(Response.success("api.content.download", { downloadId }, req));
                         // return response the downloadId
                     } else {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found content:${_.get(content, 'data.result.content.mimeType')} is of type collection`)
-                        let downloadFiles = [{
+                        logger.info(`ReqId = "${req.headers["X-msgid"]}": Found content:${_.get(content, "data.result.content.mimeType")} is of type collection`);
+                        const downloadFiles = [{
                             id: (_.get(content, "data.result.content.identifier") as string),
                             url: (_.get(content, "data.result.content.downloadUrl") as string),
-                            size: (_.get(content, "data.result.content.size") as number)
+                            size: (_.get(content, "data.result.content.size") as number),
                         }];
                         let totalCollectionSize = _.get(content, "data.result.content.size");
                         // get the child contents
-                        let childNodes = _.get(content, "data.result.content.childNodes")
+                        const childNodes = _.get(content, "data.result.content.childNodes");
                         if (!_.isEmpty(childNodes)) {
-                            logger.debug(`ReqId = "${req.headers['X-msgid']}": Get the child contents using content search API`);
-                            let childrenContentsRes = await HTTPService.post(`${process.env.APP_BASE_URL}/api/content/v1/search`,
+                            logger.debug(`ReqId = "${req.headers["X-msgid"]}": Get the child contents using content search API`);
+                            const childrenContentsRes = await HTTPService.post(`${process.env.APP_BASE_URL}/api/content/v1/search`,
                                 {
-                                    "request": {
-                                        "filters": {
-                                            "identifier": childNodes,
-                                            "mimeType": { "!=": "application/vnd.ekstep.content-collection" }
+                                    request: {
+                                        filters: {
+                                            identifier: childNodes,
+                                            mimeType: { "!=": "application/vnd.ekstep.content-collection" },
                                         },
-                                        "limit": childNodes.length
-                                    }
+                                        limit: childNodes.length,
+                                    },
                                 }, {
                                 headers: {
-                                    "Content-Type": "application/json"
-                                }
+                                    "Content-Type": "application/json",
+                                },
                             }).toPromise();
-                            logger.info(`ReqId = "${req.headers['X-msgid']}": Found child contents: ${_.get(childrenContentsRes, 'data.result.count')}`);
-                            if (_.get(childrenContentsRes, 'data.result.count')) {
-                                let contents = _.get(childrenContentsRes, 'data.result.content');
-                                for (let content of contents) {
+                            logger.info(`ReqId = "${req.headers["X-msgid"]}": Found child contents: ${_.get(childrenContentsRes, "data.result.count")}`);
+                            if (_.get(childrenContentsRes, "data.result.count")) {
+                                const contents = _.get(childrenContentsRes, "data.result.content");
+                                for (const content of contents) {
                                     totalCollectionSize += _.get(content, "size");
                                     downloadFiles.push({
                                         id: (_.get(content, "identifier") as string),
                                         url: (_.get(content, "downloadUrl") as string),
-                                        size: (_.get(content, "size") as number)
-                                    })
+                                        size: (_.get(content, "size") as number),
+                                    });
                                 }
                             }
 
                         }
-                        let downloadId = await this.downloadManager.download(downloadFiles, 'ecars')
-                        let queueMetaData = {
-                            mimeType: _.get(content, 'data.result.content.mimeType'),
+                        const downloadId = await this.downloadManager.download(downloadFiles, "ecars");
+                        const queueMetaData = {
+                            mimeType: _.get(content, "data.result.content.mimeType"),
                             items: downloadFiles,
-                            pkgVersion: _.get(content, 'data.result.content.pkgVersion'),
-                            contentType: _.get(content, 'data.result.content.contentType'),
-                            resourceId: _.get(content, "data.result.content.identifier")
-                        }
+                            pkgVersion: _.get(content, "data.result.content.pkgVersion"),
+                            contentType: _.get(content, "data.result.content.contentType"),
+                            resourceId: _.get(content, "data.result.content.identifier"),
+                        };
                         await this.checkDiskSpaceAvailability(totalCollectionSize, true);
-                        logger.debug(`ReqId = "${req.headers['X-msgid']}": insert collection in Database`);
+                        logger.debug(`ReqId = "${req.headers["X-msgid"]}": insert collection in Database`);
                         await this.databaseSdk.insert(dbName, {
-                            downloadId: downloadId,
+                            downloadId,
                             contentId: _.get(content, "data.result.content.identifier"),
                             identifier: _.get(content, "data.result.content.identifier"),
                             name: _.get(content, "data.result.content.name"),
                             status: CONTENT_DOWNLOAD_STATUS.Submitted,
-                            queueMetaData: queueMetaData,
+                            queueMetaData,
                             createdOn: Date.now(),
                             updatedOn: Date.now(),
-                            size: totalCollectionSize
-                        })
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Collection inserted successfully`);
+                            size: totalCollectionSize,
+                        });
+                        logger.info(`ReqId = "${req.headers["X-msgid"]}": Collection inserted successfully`);
                         return res.send(Response.success("api.content.download", { downloadId }, req));
                     }
                 } else {
-                    logger.error(`ReqId = "${req.headers['X-msgid']}": Received error while processing download request ${content}, for content ${req.params.id}`);
-                    res.status(500)
-                    return res.send(Response.error("api.content.download", 500))
+                    logger.error(`ReqId = "${req.headers["X-msgid"]}": Received error while processing download request ${content}, for content ${req.params.id}`);
+                    res.status(500);
+                    return res.send(Response.error("api.content.download", 500));
                 }
 
             } catch (error) {
-                logger.error(`ReqId = "${req.headers['X-msgid']}": Received error while processing download request and err.message: ${error.message}, for content ${req.params.id}`);
+                logger.error(`ReqId = "${req.headers["X-msgid"]}": Received error while processing download request and err.message: ${error.message}, for content ${req.params.id}`);
                 if (_.get(error, "code") === "LOW_DISK_SPACE") {
                     res.status(507);
                     return res.send(Response.error("api.content.download", 507, "Low disk space", "LOW_DISK_SPACE"));
                 }
-                res.status(500)
-                return res.send(Response.error("api.content.download", 500))
+                res.status(500);
+                return res.send(Response.error("api.content.download", 500));
             }
-        })()
-    }
-
-    private constructShareEvent(content) {
-        const telemetryShareItems = [{
-            id: _.get(content, "data.result.content.identifier"),
-            type: _.get(content, "data.result.content.contentType"),
-            ver: _.toString(_.get(content, "data.result.content.pkgVersion")),
-        }];
-        this.telemetryHelper.logShareEvent(telemetryShareItems, "In", "Content");
+        })();
     }
 
     public async list(req: any, res: any) {
@@ -337,10 +330,19 @@ export default class ContentDownload {
             );
         }
     }
+
+    private constructShareEvent(content) {
+        const telemetryShareItems = [{
+            id: _.get(content, "data.result.content.identifier"),
+            type: _.get(content, "data.result.content.contentType"),
+            ver: _.toString(_.get(content, "data.result.content.pkgVersion")),
+        }];
+        this.telemetryHelper.logShareEvent(telemetryShareItems, "In", "Content");
+    }
     private async checkDiskSpaceAvailability(zipSize, collection) {
         const availableDiskSpace = await this.systemSDK.getHardDiskInfo()
         .then(({availableHarddisk}) => availableHarddisk - 3e+8); // keeping buffer of 300 mb, this can be configured);
-        if (!collection || (zipSize + (zipSize * 1.5) > availableDiskSpace)) { 
+        if (!collection && (zipSize + (zipSize * 1.5) > availableDiskSpace)) {
             throw { message: "Disk space is low, couldn't copy Ecar" , code : "LOW_DISK_SPACE"};
         } else if (zipSize * 1.5 > availableDiskSpace) {
             throw { message: "Disk space is low, couldn't copy Ecar" , code : "LOW_DISK_SPACE"};

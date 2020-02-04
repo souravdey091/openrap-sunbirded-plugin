@@ -183,6 +183,8 @@ export class ImportContent implements ITaskExecuter {
       if (dbResource) {
         item._rev = dbResource._rev;
         item.desktopAppMetadata.createdOn = dbResource.desktopAppMetadata.createdOn;
+      } else {
+        delete item._rev; // if field exist insertion will fail
       }
       item.visibility = parentContent ? "Default" : item.visibility;
       if (parentContent && item.mimeType === "application/vnd.ekstep.content-collection") {

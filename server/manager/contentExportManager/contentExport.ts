@@ -29,6 +29,7 @@ export class ExportContent {
         this.dbParentNode = _.get(this.parentManifest, "archive.items[0]");
         await this.loadParentCollection();
       } else {
+        this.dbParentNode.visibility = "Default";
         await this.loadContent(this.dbParentNode, false);
       }
       // this.interval = setInterval(() => logger.log(this.parentArchive.pointer(),
@@ -87,6 +88,8 @@ export class ExportContent {
     }
   }
   private async loadContent(contentDetails, child) {
+    delete contentDetails._rev;
+    delete contentDetails._id;
     const contentState = await this.validContent(contentDetails);
     if (!contentState.valid) {
       this.corruptContents.push({ id: contentDetails.identifier, reason: contentState.reason });
@@ -96,8 +99,7 @@ export class ExportContent {
     if (child) {
       this.archiveAppend("createDir", null, contentDetails.identifier);
     }
-    this.archiveAppend("path", path.join(this.contentBaseFolder, contentDetails.identifier, "manifest.json"),
-        baseDestPath + "manifest.json");
+    this.archiveAppend('buffer', this.getManifestBuffer(contentDetails), baseDestPath + 'manifest.json');
     if (contentDetails.appIcon) {
       if (path.dirname(contentDetails.appIcon) !== ".") {
         this.archiveAppend("createDir", null, baseDestPath + path.dirname(contentDetails.appIcon));

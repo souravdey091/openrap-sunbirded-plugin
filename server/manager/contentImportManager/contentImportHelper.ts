@@ -7,7 +7,7 @@ import { manifest } from "../../manifest";
 import { containerAPI, ISystemQueue } from "OpenRAP/dist/api";
 import config from "../../config";
 import { Subject } from "rxjs";
-import { debounceTime, throttleTime } from "rxjs/operators";
+import { throttleTime } from "rxjs/operators";
 const collectionMimeType = "application/vnd.ekstep.content-collection";
 let zipHandler;
 let zipEntries;
@@ -23,7 +23,7 @@ const syncCloser = (initialProgress, percentage, totalSize = contentImportData.m
   initialProgress = initialProgress ? initialProgress : contentImportData.progress;
   let completed = 1;
   const syncData$ = new Subject<number>();
-  const subscription = syncData$.pipe(debounceTime(2500)).subscribe((data) => {
+  const subscription = syncData$.pipe(throttleTime(2500)).subscribe((data) => {
     const newProgress = ((completed / totalSize) * percentage);
     contentImportData.progress = initialProgress + newProgress;
     sendMessage("DATA_SYNC");

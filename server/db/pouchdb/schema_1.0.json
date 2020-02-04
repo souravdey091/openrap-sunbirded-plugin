@@ -76,18 +76,6 @@
             ]
         },
         {
-            "name": "page",
-            "indexes": [
-                {
-                    "index": {
-                        "fields": [
-                            "_id"
-                        ]
-                    }
-                }
-            ]
-        },
-        {
             "name": "channel",
             "indexes": [
                 {
