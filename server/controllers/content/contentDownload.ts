@@ -201,377 +201,50 @@ export default class ContentDownload {
         this.telemetryHelper.logShareEvent(telemetryShareItems, "In", "Content");
     }
 
-    list(req: any, res: any): any {
-        (async () => {
-            logger.debug(`ReqId = "${req.headers['X-msgid']}": ContentDownload List method is called`);
-            try {
-                let status = [API_DOWNLOAD_STATUS.submitted, API_DOWNLOAD_STATUS.inprogress,
-                API_DOWNLOAD_STATUS.completed, API_DOWNLOAD_STATUS.failed,
-                API_DOWNLOAD_STATUS.paused, API_DOWNLOAD_STATUS.canceled];
-                if (!_.isEmpty(_.get(req, 'body.request.filters.status'))) {
-                    status = _.get(req, 'body.request.filters.status');
+    public async list(req: any, res: any) {
+        try {
+            const selector1 = {
+                isActive: true,
+                group: 'CONTENT_MANAGER',
+            };
+            const selector2 = {
+                isActive: false,
+                group: 'CONTENT_MANAGER',
+                updatedOn: { "$gt": sessionStartTime }
+            };
+            let dbData1 = await this.systemQueue.query(selector1);
+            let dbData2 = await this.systemQueue.query(selector2);
+            let dbData = _.concat(dbData1.docs, dbData2.docs);
+            const listData = [];
+            _.forEach(dbData, (data) => {
+                const listObj = {
+                    contentId: _.get(data, 'metaData.contentId'),
+                    identifier: _.get(data, 'metaData.contentId'),
+                    id: _.get(data, '_id'),
+                    resourceId: _.get(data, 'metaData.contentId'),
+                    name: _.get(data, 'name'),
+                    totalSize: _.get(data, 'metaData.contentSize'),
+                    downloadedSize: _.get(data, 'progress'),
+                    status: _.get(data, 'status'),
+                    createdOn: _.get(data, 'createdOn'),
+                    pkgVersion: _.get(data, 'metaData.pkgVersion'),
+                    mimeType: _.get(data, 'metaData.mimeType'),
+                    failedCode: _.get(data, 'failedCode'),
+                    failedReason: _.get(data, 'failedReason'),
+                    addedUsing: _.toLower(_.get(data, 'type')),
                 }
-                let submitted = [];
-                let inprogress = [];
-                let failed = [];
-                let completed = [];
-                let paused = [];
-                let canceled = [];
-                let contentListArray = [];
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is submitted or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.submitted) !== -1) {
-                    // submitted - get from the content downloadDB and merge with data
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is submitted`);
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": Find submitted contents in ContentDb`)
-                    const submittedDbData = await this.databaseSdk.find(dbName, {
-                        "selector": {
-                            "status": CONTENT_DOWNLOAD_STATUS.Submitted
-                        }
-                    });
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": Found Submitted Contents: ${submittedDbData.docs.length}`)
-                    if (!_.isEmpty(submittedDbData.docs)) {
-                        submitted = _.map(submittedDbData.docs, (doc) => {
-                            return {
-                                "id": doc.downloadId,
-                                "contentId": doc.contentId,
-                                "identifier": doc.contentId,
-                                "resourceId": _.get(doc, 'queueMetaData.resourceId'),
-                                "mimeType": doc.queueMetaData.mimeType,
-                                "name": doc.name,
-                                "status": ImportStatus[2],
-                                "createdOn": doc.createdOn,
-                                "pkgVersion": _.get(doc, 'queueMetaData.pkgVersion'),
-                                "contentType": _.get(doc, 'queueMetaData.contentType'),
-                                "totalSize": doc.size,
-                                "addedUsing": "download"
-                            };
-                        })
-                    }
+                listData.push(listObj)
+            });
+            return res.send(Response.success("api.content.list", {
+                response: {
+                    contents: _.uniqBy(_.orderBy(listData, ["createdOn"], ["desc"]), "id"),
                 }
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is completed or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.completed) !== -1) {
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is completed`);
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": Find completed contents in ContentDb`)
-                    const completedDbData = await this.databaseSdk.find(dbName, {
-                        "selector": {
-                            "status": CONTENT_DOWNLOAD_STATUS.Indexed,
-                            "updatedOn": {
-                                "$gt": sessionStartTime
-                            },
-                            "createdOn": {
-                                "$gt": null
-                            }
-                        },
-                        "limit": 50,
-                        "sort": [
-                            {
-                                "createdOn": "desc"
-                            }
-                        ]
-                    });
-                    if (!_.isEmpty(completedDbData.docs)) {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found Submitted Contents: ${completedDbData.docs.length}`)
-                        completed = _.map(completedDbData.docs, (doc) => {
-                            return {
-                                "id": doc.downloadId,
-                                "contentId": doc.contentId,
-                                "identifier": doc.contentId,
-                                "resourceId": _.get(doc, 'queueMetaData.resourceId'),
-                                "mimeType": doc.queueMetaData.mimeType,
-                                "name": doc.name,
-                                "status": ImportStatus[8],
-                                "createdOn": doc.createdOn,
-                                "pkgVersion": _.get(doc, 'queueMetaData.pkgVersion'),
-                                "contentType": _.get(doc, 'queueMetaData.contentType'),
-                                "totalSize": doc.size,
-                                "addedUsing": "download"
-                            };
-                        })
-                    }
-                }
-
-                // inprogress - get from download queue and merge with content data
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is inprogress or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.inprogress) !== -1) {
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is inprogress`);
-                    const inprogressItems = await this.downloadManager.list(["INPROGRESS"]);
-                    if (!_.isEmpty(inprogressItems)) {
-                        let downloadIds = _.map(inprogressItems, 'id');
-                        submitted = _.filter(submitted, (s) => { return _.indexOf(downloadIds, s.id) === -1 });
-                        logger.debug(`ReqId = "${req.headers['X-msgid']}": Find inprogress contents in ContentDb`)
-                        const inProgressDbData = await this.databaseSdk.find(dbName, {
-                            "selector": {
-                                "downloadId": {
-                                    "$in": downloadIds
-                                },
-                                "createdOn": {
-                                    "$gt": null
-                                }
-                            },
-                            "sort": [
-                                {
-                                    "createdOn": "desc"
-                                }
-                            ]
-                        });
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found inprogress Contents: ${inProgressDbData.docs.length}`)
-                        _.forEach(inprogressItems, (item) => {
-                            let contentItem = _.find(inProgressDbData.docs, { downloadId: item.id })
-                            inprogress.push({
-                                contentId: _.get(contentItem, 'contentId'),
-                                identifier: _.get(contentItem, 'contentId'),
-                                id: item.id,
-                                resourceId: _.get(contentItem, 'queueMetaData.resourceId'),
-                                name: _.get(contentItem, 'name') || 'Unnamed download',
-                                totalSize: item.stats.totalSize,
-                                downloadedSize: item.stats.downloadedSize,
-                                status: ImportStatus[3],
-                                createdOn: _.get(contentItem, 'createdOn') || item.createdOn,
-                                addedUsing: "download"
-                            })
-                        })
-                    }
-                }
-
-
-                // failed -  get from the content downloadDB and download queue
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is failed or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.failed) !== -1) {
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is failed`);
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": Find Failed contents in ContentDb`)
-                    const failedDbData = await this.databaseSdk.find(dbName, {
-                        "selector": {
-                            "status": CONTENT_DOWNLOAD_STATUS.Failed,
-                            "updatedOn": {
-                                "$gt": sessionStartTime
-                            },
-                            "createdOn": {
-                                "$gt": null
-                            }
-                        },
-                        "limit": 50,
-                        "sort": [
-                            {
-                                "createdOn": "desc"
-                            }
-                        ]
-                    });
-                    if (!_.isEmpty(failedDbData.docs)) {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found inprogress Contents: ${failedDbData.docs.length}`)
-                        failed = _.map(failedDbData.docs, (doc) => {
-                            return {
-                                "id": doc.downloadId,
-                                "contentId": doc.contentId,
-                                "identifier": doc.contentId,
-                                "resourceId": _.get(doc, 'queueMetaData.resourceId'),
-                                "mimeType": doc.queueMetaData.mimeType,
-                                "name": doc.name,
-                                "status": ImportStatus[9],
-                                "createdOn": doc.createdOn,
-                                "pkgVersion": _.get(doc, 'queueMetaData.pkgVersion'),
-                                "contentType": _.get(doc, 'queueMetaData.contentType'),
-                                "totalSize": doc.size,
-                                "addedUsing": "download",
-                                "failedCode": doc.failedCode
-                            };
-                        })
-                    }
-                }
-
-                // cancelled -  get from the content downloadDB
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is canceled or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.canceled) !== -1) {
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is canceled`);
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": Find canceled contents in ContentDb`)
-                    const canceledDbData = await this.databaseSdk.find(dbName, {
-                        "selector": {
-                            "status": CONTENT_DOWNLOAD_STATUS.Canceled,
-                            "createdOn": {
-                                "$gt": null
-                            },
-                        },
-                        "limit": 50,
-                        "sort": [
-                            {
-                                "createdOn": "desc"
-                            }
-                        ]
-                    });
-                    if (!_.isEmpty(canceledDbData.docs)) {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found canceled Contents: ${canceledDbData.docs.length}`)
-                        canceled = _.map(canceledDbData.docs, (doc) => {
-                            return {
-                                "id": doc.downloadId,
-                                "contentId": doc.contentId,
-                                "identifier": doc.contentId,
-                                "resourceId": _.get(doc, 'queueMetaData.resourceId'),
-                                "mimeType": doc.queueMetaData.mimeType,
-                                "name": doc.name,
-                                "status": ImportStatus[7],
-                                "createdOn": doc.createdOn,
-                                "pkgVersion": _.get(doc, 'queueMetaData.pkgVersion'),
-                                "contentType": _.get(doc, 'queueMetaData.contentType'),
-                                "totalSize": doc.size,
-                                "addedUsing": "download"
-                            };
-                        })
-                    }
-                }
-
-                // paused -  get from the content downloadDB and download queue
-                logger.debug(`ReqId = "${req.headers['X-msgid']}": Check download status is paused or not`);
-                if (_.indexOf(status, API_DOWNLOAD_STATUS.paused) !== -1) {
-                    logger.info(`ReqId = "${req.headers['X-msgid']}": download status is paused`);
-                    logger.debug(`ReqId = "${req.headers['X-msgid']}": Find paused contents in ContentDb`)
-                    const pausedDbData = await this.databaseSdk.find(dbName, {
-                        "selector": {
-                            "status": CONTENT_DOWNLOAD_STATUS.Paused,
-                            "createdOn": {
-                                "$gt": null
-                            },
-                        },
-                        "limit": 50,
-                        "sort": [
-                            {
-                                "createdOn": "desc"
-                            }
-                        ]
-                    });
-                    if (!_.isEmpty(pausedDbData.docs)) {
-                        logger.info(`ReqId = "${req.headers['X-msgid']}": Found paused Contents: ${pausedDbData.docs.length}`)
-                        paused = _.map(pausedDbData.docs, (doc) => {
-                            return {
-                                "id": doc.downloadId,
-                                "contentId": doc.contentId,
-                                "identifier": doc.contentId,
-                                "resourceId": _.get(doc, 'queueMetaData.resourceId'),
-                                "mimeType": doc.queueMetaData.mimeType,
-                                "name": doc.name,
-                                "status": ImportStatus[5],
-                                "createdOn": doc.createdOn,
-                                "pkgVersion": _.get(doc, 'queueMetaData.pkgVersion'),
-                                "contentType": _.get(doc, 'queueMetaData.contentType'),
-                                "totalSize": doc.size,
-                                "addedUsing": "download"
-                            };
-                        })
-                    }
-                }
-
-
-                logger.info(`ReqId = "${req.headers['X-msgid']}": Received all downloaded Contents`);
-                const importJobs = await this.listContentImport();
-                contentListArray = _.concat(submitted, inprogress, failed, completed,
-                    canceled, paused, importJobs.importList);
-
-                return res.send(Response.success("api.content.download.list", {
-                    response: {
-                        contents: _.orderBy(contentListArray, ["createdOn"], ["desc"]),
-                    }
-                }, req));
-
-            } catch (error) {
-                logger.error(`ReqId = "${req.headers['X-msgid']}": Error while processing the list request and err.message: ${error.message}`)
+            }, req));
+        } catch (error) {
+            logger.error(`ReqId = "${req.headers['X-msgid']}": Error while processing the list request and err.message: ${error.message}`)
                 res.status(500)
-                return res.send(Response.error("api.content.download.list", 500))
-            }
-        })()
-    }
-    // TODO:Query needs to be optimized
-    // public async listContentImport() {
-    //     const importJobs = await this.databaseSdk.find('content_manager', {
-    //         "selector": {
-    //             $or: [
-    //                 {
-    //                     type: IAddedUsingType.import,
-    //                     status: {
-    //                         "$in": [ImportStatus.inProgress, ImportStatus.inQueue, ImportStatus.reconcile, ImportStatus.pausing, ImportStatus.paused,
-    //                         ImportStatus.resume]
-    //                     }
-    //                 },
-    //                 {
-    //                     type: IAddedUsingType.import,
-    //                     status: {
-    //                         "$in": [ImportStatus.failed, ImportStatus.completed]
-    //                     },
-    //                     updatedOn: {
-    //                         "$gt": sessionStartTime
-    //                     }
-    //                 }
-    //             ]
-    //         }
-    //     }).catch((error) => {
-    //         console.error('Error while fetching content import status');
-    //         return { docs: [] }
-    //     });
-    //     const contentImportJobs = {
-    //         importList: []
-    //     };
-    //     _.forEach(importJobs.docs, (job: IContentImport) => {
-    //         const jobObj = {
-    //             contentId: job.contentId,
-    //             identifier: job.contentId,
-    //             id: job._id,
-    //             resourceId: job.contentId,
-    //             name: job.name,
-    //             totalSize: job.contentSize,
-    //             downloadedSize: job.progress,
-    //             status: ImportStatus[job.status],
-    //             createdOn: job.createdOn,
-    //             pkgVersion: job.pkgVersion,
-    //             mimeType: job.mimeType,
-    //             failedCode: job.failedCode,
-    //             failedReason: job.failedReason,
-    //             addedUsing: job.type
-    //         }
-
-    //         contentImportJobs.importList.push(jobObj)
-    //     });
-    //     return contentImportJobs;
-    // }
-
-    public async listContentImport() {
-        const selector1 = {
-            isActive: true,
-            group: 'CONTENT_MANAGER',
-        };
-        const selector2 = {
-            isActive: false,
-            group: 'CONTENT_MANAGER',
-            updatedOn: { "$gt": sessionStartTime }
-        };
-        let dbData1 = await this.systemQueue.query(selector1);
-        let dbData2 = await this.systemQueue.query(selector2);
-        let dbData = _.concat(dbData1.docs, dbData2.docs);
-
-
-console.log("+++++++++++++++++++++++++++++++++plugindbData", dbData)
-
-
-        const contentImportJobs = {
-            importList: []
-        };
-        _.forEach(dbData, (data) => {
-            const listObj = {
-                contentId: _.get(data, 'metaData.contentId'),
-                identifier: _.get(data, 'metaData.contentId'),
-                id: _.get(data, '_id'),
-                resourceId: _.get(data, 'metaData.contentId'),
-                name: _.get(data, 'name'),
-                totalSize: _.get(data, 'metaData.contentSize'),
-                downloadedSize: _.get(data, 'progress'),
-                status: _.get(data, 'status'),
-                createdOn: _.get(data, 'createdOn'),
-                pkgVersion: _.get(data, 'metaData.pkgVersion'),
-                mimeType: _.get(data, 'metaData.mimeType'),
-                failedCode: _.get(data, 'failedCode'),
-                failedReason: _.get(data, 'failedReason'),
-                addedUsing: _.toLower(_.get(data, 'type')),
-            }
-            contentImportJobs.importList.push(listObj)
-        });
-        console.log("+++++++++++++++++++++++++++++++++plugindbData", contentImportJobs)
-        return contentImportJobs;
+                return res.send(Response.error("api.content.list", 500))
+        }
     }
 
     public async pause(req: any, res: any) {
