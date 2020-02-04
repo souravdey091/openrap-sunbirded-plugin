@@ -116,15 +116,7 @@ export class Server extends BaseServer {
     await this.fileSDK.mkdir(this.contentFilesPath);
     await this.fileSDK.mkdir(this.ecarsFolderPath);
 
-<<<<<<< HEAD
-=======
-    this.contentImportManager.initialize(
-      manifest.id,
-      this.fileSDK.getAbsPath(this.contentFilesPath),
-      this.fileSDK.getAbsPath(this.ecarsFolderPath)
-    );
     addContentListener(manifest.id);
->>>>>>> upstream/release-2.8.0
     setTimeout(async () => {
       reconciliation(manifest.id);
       await this.contentDelete.reconciliation();

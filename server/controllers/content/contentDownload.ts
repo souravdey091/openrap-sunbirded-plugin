@@ -1,10 +1,8 @@
 import { logger } from "@project-sunbird/ext-framework-server/logger";
 import { Manifest } from "@project-sunbird/ext-framework-server/models";
-import { logger } from '@project-sunbird/ext-framework-server/logger';
 import { containerAPI, ISystemQueueInstance } from "OpenRAP/dist/api";
 import { HTTPService } from "@project-sunbird/ext-framework-server/services";
 import * as _ from "lodash";
-import { containerAPI } from "OpenRAP/dist/api";
 import * as path from "path";
 import { Inject } from "typescript-ioc";
 import { IAddedUsingType } from "../../controllers/content/IContent";
@@ -203,11 +201,11 @@ export default class ContentDownload {
             const selector2 = {
                 isActive: false,
                 group: 'CONTENT_MANAGER',
-                updatedOn: { "$gt": sessionStartTime }
+                updatedOn: { "$gt": sessionStartTime },
             };
-            let dbData1 = await this.systemQueue.query(selector1);
-            let dbData2 = await this.systemQueue.query(selector2);
-            let dbData = _.concat(dbData1.docs, dbData2.docs);
+            const dbData1 = await this.systemQueue.query(selector1);
+            const dbData2 = await this.systemQueue.query(selector2);
+            const dbData = _.concat(dbData1.docs, dbData2.docs);
             const listData = [];
             _.forEach(dbData, (data) => {
                 const listObj = {
@@ -225,18 +223,18 @@ export default class ContentDownload {
                     failedCode: _.get(data, 'failedCode'),
                     failedReason: _.get(data, 'failedReason'),
                     addedUsing: _.toLower(_.get(data, 'type')),
-                }
-                listData.push(listObj)
+                };
+                listData.push(listObj);
             });
             return res.send(Response.success("api.content.list", {
                 response: {
                     contents: _.uniqBy(_.orderBy(listData, ["createdOn"], ["desc"]), "id"),
-                }
+                },
             }, req));
         } catch (error) {
-            logger.error(`ReqId = "${req.headers['X-msgid']}": Error while processing the list request and err.message: ${error.message}`)
-                res.status(500)
-                return res.send(Response.error("api.content.list", 500))
+            logger.error(`ReqId = "${req.headers['X-msgid']}": Error while processing the content list request and err.message: ${error.message}`);
+            res.status(500);
+            return res.send(Response.error("api.content.list", 500));
         }
     }
 
