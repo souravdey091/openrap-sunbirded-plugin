@@ -65,7 +65,7 @@ export default class SystemQueueMigration {
 
     private async import() {
         try {
-            const dbData = await this.dbSDK.find("content_download",
+            const dbData = await this.dbSDK.find("content_manager",
                 {
                     selector: {
                         status: {
