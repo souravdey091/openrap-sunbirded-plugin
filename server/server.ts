@@ -123,7 +123,6 @@ export class Server extends BaseServer {
     addContentListener(manifest.id);
     setTimeout(async () => {
       reconciliation(manifest.id);
-      await this.contentDelete.reconciliation();
     }, 120000);
     setTimeout(async () => { this.systemQueueMigration.initialize(); }, 3000);
     //- reIndex()

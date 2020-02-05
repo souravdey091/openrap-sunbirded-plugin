@@ -3,7 +3,13 @@ import * as _ from "lodash";
 import { containerAPI } from "OpenRAP/dist/api";
 import { manifest } from '../../manifest';
 
-export class DeleteQueue {
+process.on("message", (filePaths) => {
+    for (const filePath of filePaths) {
+        contentDeleteProcess.pushToQueue(filePath);
+    }
+});
+
+class ContentDeleteProcess {
     private concurrency: number;
     private queue: string[];
     private running: number;
@@ -33,9 +39,13 @@ export class DeleteQueue {
             });
             this.running++;
         }
+        if (this.queue.length === 0) {
+            process.send({processed: true});
+        }
     }
     private checkPath(path) {
         const regex = /content\/\w*/;
         return path.match(regex) && !_.includes(this.queue, path);
     }
   }
+const contentDeleteProcess =  new ContentDeleteProcess(5);
