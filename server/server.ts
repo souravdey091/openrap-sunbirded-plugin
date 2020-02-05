@@ -23,11 +23,16 @@ import {
 } from "./controllers/content/contentHelper";
 import * as _ from "lodash";
 import { EventManager } from "@project-sunbird/ext-framework-server/managers/EventManager";
+import SystemQueueMigration from './controllers/content/systemQueueMigration'
+
 
 export class Server extends BaseServer {
   private sunbirded_plugin_initialized = false;
   private ecarsFolderPath: string = "ecars";
   private contentFilesPath: string = "content";
+
+  // TODO: Remove in next release
+  @Inject private systemQueueMigration: SystemQueueMigration;
 
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -120,6 +125,7 @@ export class Server extends BaseServer {
       reconciliation(manifest.id);
       await this.contentDelete.reconciliation();
     }, 120000);
+    setTimeout(async () => { this.systemQueueMigration.initialize(); }, 3000);
     //- reIndex()
     //- reConfigure()
   }

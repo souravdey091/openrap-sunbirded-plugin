@@ -13,42 +13,7 @@ export enum ImportProgress {
   "PROCESS_CONTENTS" = 99,
   "COMPLETE" = 100,
 }
-export enum ImportStatus {
-  reconcile,
-  resume,
-  inQueue,
-  inProgress,
-  pausing,
-  paused,
-  canceling,
-  canceled,
-  completed,
-  failed,
-}
-export interface IContentImport {
-  _id: string;
-  _rev?: string;
-  status: ImportStatus;
-  type: string;
-  name: string;
-  createdOn: number;
-  updatedOn: number;
-  progress: number;
-  contentSize: number;
-  contentId?: string;
-  mimeType?: string;
-  contentType?: string;
-  pkgVersion?: string;
-  failedCode?: string;
-  failedReason?: string;
-  ecarSourcePath: string;
-  importStep?: ImportSteps;
-  extractedEcarEntries: object;
-  artifactUnzipped: object;
-  childNodes?: string[];
-  contentAdded?: string[];
-  contentSkipped?: IContentSkipped[];
-}
+
 export interface IContentImportData {
   contentSize: number;
   contentId?: string;

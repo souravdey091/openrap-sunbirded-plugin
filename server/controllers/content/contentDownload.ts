@@ -5,9 +5,7 @@ import { HTTPService } from "@project-sunbird/ext-framework-server/services";
 import * as _ from "lodash";
 import * as path from "path";
 import { Inject } from "typescript-ioc";
-import { IAddedUsingType } from "../../controllers/content/IContent";
 import TelemetryHelper from "../../helper/telemetryHelper";
-import { IContentImport, ImportStatus } from "../../manager/contentImportManager";
 import DatabaseSDK from "../../sdk/database";
 import Response from "../../utils/response";
 const sessionStartTime = Date.now();
@@ -194,18 +192,18 @@ export default class ContentDownload {
 
     public async list(req: any, res: any) {
         try {
-            const selector1 = {
+            const activeSelector = {
                 isActive: true,
                 group: 'CONTENT_MANAGER',
             };
-            const selector2 = {
+            const inActiveSelector = {
                 isActive: false,
                 group: 'CONTENT_MANAGER',
                 updatedOn: { "$gt": sessionStartTime },
             };
-            const dbData1 = await this.systemQueue.query(selector1);
-            const dbData2 = await this.systemQueue.query(selector2);
-            const dbData = _.concat(dbData1.docs, dbData2.docs);
+            const activeDbData = await this.systemQueue.query(activeSelector);
+            const inActiveDbData = await this.systemQueue.query(inActiveSelector);
+            const dbData = _.concat(activeDbData.docs, inActiveDbData.docs);
             const listData = [];
             _.forEach(dbData, (data) => {
                 const listObj = {
