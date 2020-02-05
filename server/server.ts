@@ -115,7 +115,6 @@ export class Server extends BaseServer {
 
     await this.fileSDK.mkdir(this.contentFilesPath);
     await this.fileSDK.mkdir(this.ecarsFolderPath);
-
     addContentListener(manifest.id);
     setTimeout(async () => {
       reconciliation(manifest.id);
