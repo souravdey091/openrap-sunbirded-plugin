@@ -8,6 +8,7 @@ import { containerAPI, ISystemQueue } from "OpenRAP/dist/api";
 import config from "../../config";
 import { Subject } from "rxjs";
 import { throttleTime } from "rxjs/operators";
+import * as os from "os";
 const collectionMimeType = "application/vnd.ekstep.content-collection";
 let zipHandler;
 let zipEntries;
@@ -35,8 +36,16 @@ const syncCloser = (initialProgress, percentage, totalSize = contentImportData.m
   };
 };
 const getAvailableDiskSpace = () => {
-  return systemSDK.getHardDiskInfo().then(({availableHarddisk}) => {
-    return availableHarddisk - 3e+8; // keeping buffer of 300 mb, this can be configured
+  return systemSDK.getHardDiskInfo().then(({availableHarddisk, fsSize}) => {
+    if (os.platform() === "win32") {
+      const fileSize: any = fsSize;
+      const totalHarddisk = _.find(fileSize, { mount: "C:" })["size"] || 0;
+      const usedHarddisk = _.find(fileSize, { mount: "C:" })["used"] || 0;
+      const availableHardDisk = totalHarddisk - usedHarddisk;
+      return availableHardDisk - 3e+8; // keeping buffer of 300 mb, this can be configured
+    } else {
+      return availableHarddisk - 3e+8; // keeping buffer of 300 mb, this can be configured
+    }
   });
 };
 
