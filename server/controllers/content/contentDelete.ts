@@ -1,6 +1,5 @@
 import { logger } from "@project-sunbird/ext-framework-server/logger";
 import { Manifest } from "@project-sunbird/ext-framework-server/models";
-import * as childProcess from "child_process";
 import * as _ from "lodash";
 import { containerAPI, ISystemQueueInstance, SystemQueueReq } from "OpenRAP/dist/api";
 import * as path from "path";
@@ -12,7 +11,6 @@ import { ContentDeleteHelper } from "./contentDeleteHelper";
 import { IContentDelete, IDeletePath } from "./IContent";
 
 export default class ContentDelete {
-    private workerProcessRef: childProcess.ChildProcess;
     @Inject
     private databaseSdk: DatabaseSDK;
     private systemQueue: ISystemQueueInstance;

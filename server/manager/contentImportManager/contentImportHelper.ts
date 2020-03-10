@@ -107,6 +107,7 @@ const parseEcar = async () => {
     contentImportData.progress = ImportProgress.EXTRACT_ECAR;
     sendMessage(ImportSteps.parseEcar);
   } catch (err) {
+    zipHandler.close();
     sendMessage("IMPORT_ERROR", getErrorObj(err, "UNHANDLED_PARSE_ECAR_ERROR"));
   }
 };
@@ -208,11 +209,8 @@ const extractEcar = async () => {
     await removeFile(path.join("content", contentImportData._id)); // delete temp content folder which has manifest.json
     sendMessage(ImportSteps.extractEcar);
   } catch (err) {
+    zipHandler.close();
     sendMessage("IMPORT_ERROR", getErrorObj(err, "UNHANDLED_EXTRACT_ECAR_ERROR"));
-  } finally {
-    if (zipHandler.close) {
-      zipHandler.close();
-    }
   }
 };
 
@@ -246,6 +244,7 @@ const extractZipArtifact = async (artifact) => {
   await unzipFile(artifact.src);
   await removeFile(artifact.src);
   contentImportData.metaData.contentAdded.push(artifact.contentId);
+  zipArtifactZipHandler.close();
 };
 
 const loadZipHandler = async (filePath) => {

@@ -83,3 +83,14 @@ export const app_update_error = {
   'responseCode': 'INTERNAL_SERVER_ERROR',
   'result': {}
 }
+export const get_content_error = { id: 'api.content.read',
+ver: '1.0',
+ts: '2020-03-06T13:14:16.174Z',
+params: 
+ { resmsgid: 'a8e8b2b5-fe29-4322-afa6-a6fde3bd89f2',
+   msgid: 'cd8d9ec1-9fd2-4164-b48e-a7d6b906050f',
+   status: 'failed',
+   err: 'ERR_DATA_NOT_FOUND',
+   errmsg: 'Data not found' },
+responseCode: 'RESOURCE_NOT_FOUND',
+result: {} }

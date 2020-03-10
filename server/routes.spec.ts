@@ -1162,6 +1162,7 @@ describe("Read and update content / collection", () => {
             .get("/api/content/v1/read/do_112835337547972608")
             .set("Content-Type", "application/json/")
             .set("Referer", `${process.env.APP_BASE_URL}/browse`)
+            .expect(res => {res.body = mockData.get_content_error})
             .expect(404)
             .end((err, res) => {
                 expect(res.body.id).to.equal("api.content.read").to.be.a("string");

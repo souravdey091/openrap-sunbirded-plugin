@@ -180,7 +180,9 @@ export class ContentDownloader implements ITaskExecuter {
         return;
       }
       for (const item of itemsToDelete) {
-        await this.fileSDK.remove(item);
+        await this.fileSDK.remove(item).catch((error) => {
+          logger.error(`Received error while deleting content path: ${path} and error: ${error}`);
+        });
       }
       this.checkForAllTaskCompletion();
     } catch (err) {
@@ -213,6 +215,7 @@ export class ContentDownloader implements ITaskExecuter {
       await this.extractZipEntry(zipHandler, entry.name,
         path.join(this.fileSDK.getAbsPath("content"), contentDetails.identifier));
     }
+    zipHandler.close();
     logger.debug(`${this.contentDownloadData._id}:Extracted content: ${contentId}`);
     itemsToDelete.push(path.join("ecars", contentDetails.downloadId));
     const manifestJson = await this.fileSDK.readJSON(
@@ -298,6 +301,10 @@ export class ContentDownloader implements ITaskExecuter {
     }
   }
   private async checkSpaceAvailability(zipPath, zipHandler?) {
+    let closeZipHandler = true;
+    if (zipHandler) {
+      closeZipHandler = false;
+    }
     zipHandler = zipHandler || await this.loadZipHandler(zipPath);
     const entries = zipHandler.entries();
     const availableDiskSpace = await this.getAvailableDiskSpace();
@@ -307,6 +314,9 @@ export class ContentDownloader implements ITaskExecuter {
     }
     if (contentSize > availableDiskSpace) {
       throw { message: "Disk space is low, couldn't extract Ecar", code: "LOW_DISK_SPACE" };
+    }
+    if (closeZipHandler) {
+        zipHandler.close();
     }
   }
   private async loadZipHandler(filePath) {
