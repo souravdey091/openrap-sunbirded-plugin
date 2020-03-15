@@ -623,6 +623,7 @@ export class Router {
     app.post("/api/telemetry/v1/import/retry/:importId", telemetry.retryImport.bind(telemetry));
     app.post("/api/telemetry/v1/list", telemetry.list.bind(telemetry));
     app.post("/api/telemetry/v1/config", telemetry.setTelemetrySyncSetting.bind(telemetry));
+    app.post("/api/desktop/v1/sync", telemetry.sync.bind(telemetry));
 
     app.get("/api/app/v1/terms_of_use", proxy(`${proxyUrl}`, {
       proxyReqPathResolver() {

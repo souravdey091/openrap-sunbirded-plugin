@@ -4,6 +4,8 @@ import * as _ from "lodash";
 import { containerAPI, ISystemQueueInstance } from "OpenRAP/dist/api";
 import { Inject } from "typescript-ioc";
 import DatabaseSDK from "../sdk/database";
+import { NetworkQueueForceSync } from "./../manager/networkQueueForceSyncManager/networkQueueForceSync";
+import { NetworkQueueForceSyncManager } from "./../manager/networkQueueForceSyncManager/networkQueueForceSyncManager";
 import { ImportTelemetry } from "./../manager/telemetryImportManager/telemetryImport";
 import { TelemetryImportManager } from "./../manager/telemetryImportManager/telemetryImportManager";
 import Response from "./../utils/response";
@@ -15,11 +17,13 @@ export default class Telemetry {
   private systemQueue: ISystemQueueInstance;
 
   @Inject private telemetryImportManager: TelemetryImportManager;
+  @Inject private networkQueueForceSyncManager: NetworkQueueForceSyncManager;
 
   constructor(manifest: Manifest) {
     this.databaseSdk.initialize(manifest.id);
     this.telemetrySDK = containerAPI.getTelemetrySDKInstance();
     this.telemetryImportManager.initialize();
+    this.networkQueueForceSyncManager.initialize();
     this.systemQueue = containerAPI.getSystemQueueInstance(manifest.id);
   }
 
@@ -130,6 +134,23 @@ export default class Telemetry {
     });
   }
 
+  public async sync(req: any, res: any) {
+    try {
+      const type = _.get(req, "body.request.type");
+      if (type === undefined || !_.isArray(type)) {
+        res.status(400);
+        return res.send(Response.error("api.desktop.sync", 400
+          , "Type key should exist and it should be an array"));
+      }
+      const data = await this.networkQueueForceSyncManager.add(type);
+      res.status(200);
+      return res.send(Response.success("api.desktop.sync", { response: data }, req));
+    } catch (err) {
+      res.status(err.status || 500);
+      return res.send(Response.error("api.desktop.sync", err.status || 500, err.errMessage || err.message, err.code));
+    }
+  }
+
   public async import(req: any, res: any) {
     const filePaths = req.body;
     if (!filePaths) {
@@ -158,15 +179,15 @@ export default class Telemetry {
 
   public async list(req: any, res: any) {
     try {
-      let dbData = await this.systemQueue.query({ type: ImportTelemetry.taskType });
+      let dbData = await this.systemQueue.query({ type: NetworkQueueForceSync.taskType });
       dbData = _.map(dbData.docs, (data) => ({
         id: _.get(data, "_id"),
         name: _.get(data, "name"),
         progress: _.get(data, "progress"),
         failedCode: _.get(data, "failedCode"),
         failedReason: _.get(data, "failedReason"),
-        addedUsing: _.toLower(_.get(data, "type")),
-        totalSize: _.get(data, "metaData.fileSize"),
+        // addedUsing: _.toLower(_.get(data, "type")),
+        // totalSize: _.get(data, "metaData.fileSize"),
         createdOn: _.get(data, "createdOn"),
         status: _.get(data, "status"),
       }));
