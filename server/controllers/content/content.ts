@@ -259,8 +259,8 @@ export default class Content {
                         return resp;
                     }
             }
-            return [];
         }
+        return [];
     }
 
     private async getDialCodeResources(content: {}, dialCode: string) {
