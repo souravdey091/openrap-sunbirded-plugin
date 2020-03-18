@@ -10,7 +10,8 @@
     "test": "tslint **/*.ts && npm run post-test && npm run pre-test &&  nyc --reporter=html --reporter=text mocha --timeout 10000 --exit -r ts-node/register **/**/*.spec.ts **/*.spec.ts *.spec.ts --exclude **/node_modules/** && npm run post-test",
     "post-test": "rimraf test test_data/openrap-sunbirded-plugin/content test_data/openrap-sunbirded-plugin/ecars test_data/openrap-sunbirded-plugin/telemetry_archived test_data/database/* test_data/log test_data/export_contents/* ",
     "prepare-data": "node_modules/.bin/rimraf ./dist && tsc --noImplicitUseStrict &&  node ./dist/build/index.js",
-    "lint": "tslint --fix ./**/*.ts"
+    "lint": "tslint --fix ./**/*.ts",
+    "dev-build": "npm run build && gulp copy-dist-to-app"
   },
   "nyc": {
     "extension": [
