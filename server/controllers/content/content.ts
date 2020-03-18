@@ -254,7 +254,7 @@ export default class Content {
 
         if (dbData.docs.length) {
             for (const content of dbData.docs) {
-                    const resp = await this.getDilaCodeResorces(content, dialCode);
+                    const resp = await this.getDialCodeResources(content, dialCode);
                     if (!_.isEmpty(resp)) {
                         return resp;
                     }
@@ -263,7 +263,7 @@ export default class Content {
         }
     }
 
-    private async getDilaCodeResorces(content: {}, dialCode: string) {
+    private async getDialCodeResources(content: {}, dialCode: string) {
         const model = new TreeModel();
         let treeModel;
         treeModel = model.parse(content);
