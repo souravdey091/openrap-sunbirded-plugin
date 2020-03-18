@@ -196,11 +196,20 @@ export default class Content {
                 }
                 if (data.length === 0) {
                     logger.info(`ReqId = "${req.headers['X-msgid']}": Contents NOT found in DB`);
-                    resObj = {
-                        content: [],
-                        count: 0,
-                        facets,
-                    };
+                    if (_.get(filters, "dialcodes")) {
+                        const contents = await this.getMimeTypeCollections(_.get(filters, "dialcodes")[0]);
+                        resObj = {
+                            content: contents,
+                            count: contents.length,
+                            facets,
+                        };
+                    } else {
+                        resObj = {
+                            content: [],
+                            count: 0,
+                            facets,
+                        };
+                    }
                 } else {
                     const downloadedContents = await this.changeContentStatus(data, req.headers['X-msgid']);
                     if (downloadedContents.length > 0) {
@@ -234,6 +243,56 @@ export default class Content {
                     return res.send(Response.error('api.content.search', status));
                 }
             });
+    }
+
+    private async getMimeTypeCollections(dialCode: string) {
+        const dbData = await this.databaseSdk.find("content", {
+            selector: {
+                mimeType: "application/vnd.ekstep.content-collection",
+            },
+        });
+
+        if (dbData.docs.length) {
+            for (const content of dbData.docs) {
+                    const resp = await this.getDilaCodeResorces(content, dialCode);
+                    if (!_.isEmpty(resp)) {
+                        return resp;
+                    }
+            }
+            return [];
+        }
+    }
+
+    private async getDilaCodeResorces(content: {}, dialCode: string) {
+        const model = new TreeModel();
+        let treeModel;
+        treeModel = model.parse(content);
+        const contentIds: string[] = [];
+        treeModel.walk((node) => {
+            if (node.model.dialcodes && _.includes(node.model.dialcodes, dialCode)) {
+                if (node.model.mimeType === "application/vnd.ekstep.content-collection") {
+                    node.all((childNode) => {
+                        if (childNode.model.mimeType !== "application/vnd.ekstep.content-collection") {
+                            contentIds.push(childNode.model.identifier);
+                        }
+                    });
+                } else {
+                    contentIds.push(node.model.identifier);
+                }
+            }
+        });
+        if (_.isEmpty(contentIds)) {
+            return [];
+        }
+        const dbFilter = {
+            selector: {
+                _id: {
+                    $in: contentIds,
+                },
+            },
+        };
+        const dbData = await this.databaseSdk.find("content", dbFilter);
+        return dbData.docs;
     }
 
     getFacets(facets, contents) {
