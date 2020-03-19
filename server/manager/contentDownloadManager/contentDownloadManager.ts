@@ -15,6 +15,12 @@ const ContentSearchUrl = `${process.env.APP_BASE_URL}/api/content/v1/search`;
 const DefaultRequestOptions = { headers: { "Content-Type": "application/json" } };
 import HardDiskInfo from "../../utils/hardDiskInfo";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+// @ClassLogger({
+//   logLevel: "debug",
+//   logTime: true,
+
+// })
 @Singleton
 export class ContentDownloadManager {
   @Inject private dbSDK: DatabaseSDK;
@@ -30,7 +36,6 @@ export class ContentDownloadManager {
     const contentId = req.params.id;
     const reqId = req.headers["X-msgid"];
     let parentId = _.get(req.body, "request.parentId");
-    logger.debug(`${reqId} Content update request called for contentId: ${contentId} with parentId: ${parentId}`);
     try {
       const dbContentDetails = await this.dbSDK.get("content", contentId);
       const apiContentResponse = await HTTPService.get(`${ContentReadUrl}/${contentId}`, {}).toPromise();
@@ -124,7 +129,6 @@ export class ContentDownloadManager {
   public async download(req, res) {
     const contentId = req.params.id;
     const reqId = req.headers["X-msgid"];
-    logger.debug(`${reqId} Content download request called for contentId: ${contentId}`);
     try {
       const contentResponse = await HTTPService.get(`${ContentReadUrl}/${contentId}`, {}).toPromise();
       const contentDetail = contentResponse.data.result.content;
@@ -197,11 +201,9 @@ export class ContentDownloadManager {
     const downloadId = req.params.downloadId;
     const reqId = req.headers["X-msgid"];
     try {
-      logger.debug(`${reqId} Content download pause request called for id: ${downloadId}`);
       await this.systemQueue.pause(downloadId);
       return res.send(Response.success("api.content.pause.download", downloadId, req));
     } catch (error) {
-      logger.error(`${reqId} Content download pause request failed`, error.message);
       const status = _.get(error, "status") || 500;
       res.status(status);
       return res.send(Response.error("api.content.pause.download", status,
@@ -213,11 +215,9 @@ export class ContentDownloadManager {
     const downloadId = req.params.downloadId;
     const reqId = req.headers["X-msgid"];
     try {
-      logger.debug(`${reqId} Content download resume request called for id: ${downloadId}`);
       await this.systemQueue.resume(downloadId);
       return res.send(Response.success("api.content.resume.download", downloadId, req));
     } catch (error) {
-      logger.error(`${reqId} Content download resume request failed`, error.message);
       const status = _.get(error, "status") || 500;
       res.status(status);
       return res.send( Response.error("api.content.resume.download", status, _.get(error, "message"), _.get(error, "code")));
@@ -228,11 +228,9 @@ export class ContentDownloadManager {
     const downloadId = req.params.downloadId;
     const reqId = req.headers["X-msgid"];
     try {
-      logger.debug(`${reqId} Content download cancel request called for id: ${downloadId}`);
       await this.systemQueue.cancel(downloadId);
       return res.send(Response.success("api.content.pause.download", downloadId, req));
     } catch (error) {
-      logger.error(`${reqId} Content download cancel request failed`, error.message);
       const status = _.get(error, "status") || 500;
       res.status(status);
       return res.send( Response.error("api.content.cancel.download", status, _.get(error, "message"), _.get(error, "code")));
@@ -243,11 +241,9 @@ export class ContentDownloadManager {
     const downloadId = req.params.downloadId;
     const reqId = req.headers["X-msgid"];
     try {
-      logger.debug(`${reqId} Content download retry request called for id: ${downloadId}`);
       await this.systemQueue.retry(downloadId);
       return res.send(Response.success("api.content.retry.download", downloadId, req));
     } catch (error) {
-      logger.error(`${reqId} Content download retry request failed`, error.message);
       const status = _.get(error, "status") || 500;
       res.status(status);
       return res.send( Response.error("api.content.retry.download", status,

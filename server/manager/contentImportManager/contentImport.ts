@@ -11,6 +11,12 @@ import * as  _ from "lodash";
 import { Observer } from "rxjs";
 import TelemetryHelper from "../../helper/telemetryHelper";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export class ImportContent implements ITaskExecuter {
   private deviceId: string;
   public static taskType = "IMPORT";
@@ -34,7 +40,6 @@ export class ImportContent implements ITaskExecuter {
     return this.contentImportData;
   }
   public async start(contentImportData: ISystemQueue, observer: Observer<ISystemQueue>) {
-    logger.debug("Import task executor initialized for ", contentImportData);
     this.contentImportData = contentImportData;
     this.observer = observer;
     this.workerProcessRef = childProcess.fork(path.join(__dirname, "contentImportHelper"));
@@ -79,7 +84,6 @@ export class ImportContent implements ITaskExecuter {
 
   public async cancel() {
     this.interrupt = true; // to stop message from child process
-    logger.info("canceling running import job for", this.contentImportData._id);
     if (this.contentImportData.metaData.step === ImportSteps.processContents) {
       return false;
     }
@@ -91,7 +95,6 @@ export class ImportContent implements ITaskExecuter {
   }
 
   public async pause() {
-    logger.info("pausing running import job for", this.contentImportData._id);
     this.interrupt = true; // to stop message from child process
     if (this.contentImportData.metaData.step === ImportSteps.processContents) {
       return false;
@@ -124,7 +127,6 @@ export class ImportContent implements ITaskExecuter {
         dbContents,
       });
     } catch (err) {
-      logger.error(this.contentImportData._id, "Error while processContents ", err);
       this.observer.next(this.contentImportData);
       this.observer.error(err);
       this.cleanUpAfterErrorOrCancel();
@@ -150,7 +152,6 @@ export class ImportContent implements ITaskExecuter {
       this.observer.next(this.contentImportData);
       this.observer.complete();
     } catch (err) {
-      logger.error(this.contentImportData._id, "Error while processContents for ", err);
       this.contentImportData.metaData.step = ImportSteps.copyEcar;
       this.contentImportData.failedCode = err.errCode || "CONTENT_SAVE_FAILED";
       this.contentImportData.failedReason = err.errMessage;
@@ -176,7 +177,6 @@ export class ImportContent implements ITaskExecuter {
   }
 
   private async saveContentsToDb(dbContents) {
-    logger.info(this.contentImportData._id, "saving contents to db");
     this.manifestJson = await this.fileSDK.readJSON(
       path.join(path.join(this.fileSDK.getAbsPath("content"), this.contentImportData.metaData.contentId), "manifest.json"));
     const resources = _.reduce(_.get(this.manifestJson, "archive.items"), (acc, item) => {
@@ -236,7 +236,6 @@ export class ImportContent implements ITaskExecuter {
 
   private async handleChildProcessMessage() {
     this.workerProcessRef.on("message", async (data) => {
-      logger.info("Message from child process for importId:" + _.get(data, "contentImportData._id"), data.message);
       if (data.contentImportData && (data && data.message !== "LOG")) {
         this.saveDataFromWorker(data.contentImportData); // save only required data from child,
       }
@@ -265,7 +264,6 @@ export class ImportContent implements ITaskExecuter {
 
   private handleWorkerCloseEvents() {
     this.workerProcessRef.on("exit", (code, signal) => {
-      logger.info(this.contentImportData._id, "Child process exited with", code, signal);
       if (this.interrupt || this.contentImportData.metaData.step === ImportSteps.complete) {
         return;
       }
@@ -276,8 +274,6 @@ export class ImportContent implements ITaskExecuter {
   }
 
   private async handleUnexpectedChildProcessExit(code, signal) {
-    logger.error("Unexpected exit of child process for importId",
-      this.contentImportData._id, "with signal and code", code, signal);
     this.contentImportData.metaData.step = ImportSteps.copyEcar;
     this.observer.next(this.contentImportData);
     this.observer.error({
@@ -288,7 +284,6 @@ export class ImportContent implements ITaskExecuter {
   }
 
   private async handleChildProcessError(err: ErrorObj) {
-    logger.error(this.contentImportData._id, "Got error while importing ecar with importId:", err);
     this.contentImportData.metaData.step = ImportSteps.copyEcar;
     this.observer.next(this.contentImportData);
     this.observer.error({
@@ -314,8 +309,6 @@ export class ImportContent implements ITaskExecuter {
       this.workerProcessRef.on("message", async (data) => {
         if (data.message === "DATA_SYNC_KILL") {
           this.workerProcessRef.kill();
-          logger.info(this.contentImportData._id, "kill signal from child",
-            this.contentImportData.status, this.contentImportData.metaData.step);
           resolve();
         }
       });

@@ -7,6 +7,13 @@ import { Inject } from "typescript-ioc";
 import DatabaseSDK from "../sdk/database/index";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+
+})*/
 export class ResourceBundle {
   // resourceBundleFiles
   @Inject
@@ -48,9 +55,7 @@ export class ResourceBundle {
   }
 
   public get(req, res) {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Get method called to get resourcebundles `,
-    );
+
     const id = req.params.id || "en";
     logger.info(
       `ReqId = "${req.headers["X-msgid"]}": Getting the data from resource_bundle database with id: ${id}`,

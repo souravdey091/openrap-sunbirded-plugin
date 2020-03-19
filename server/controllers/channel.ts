@@ -7,6 +7,12 @@ import { Inject } from "typescript-ioc";
 import DatabaseSDK from "../sdk/database/index";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+// @ClassLogger({
+//   logLevel: "debug",
+//   logTime: true,
+// })
 export class Channel {
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -53,9 +59,6 @@ export class Channel {
   }
 
   public get(req, res) {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Getting Channel data for channel with Id: ${req.params.id}`,
-    );
     const id = req.params.id;
     logger.info(
       `ReqId = "${req.headers["X-msgid"]}": Getting the data from channel database with id: ${id}`,

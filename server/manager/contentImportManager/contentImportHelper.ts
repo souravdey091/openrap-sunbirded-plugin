@@ -20,6 +20,7 @@ const pluginBasePath = fileSDK.getAbsPath("");
 const contentFolder = fileSDK.getAbsPath("content");
 const ecarFolder = fileSDK.getAbsPath("ecars");
 const systemSDK = containerAPI.getSystemSDKInstance(manifest.id);
+
 const syncCloser = (initialProgress, percentage, totalSize = contentImportData.metaData.contentSize) => {
   initialProgress = initialProgress ? initialProgress : contentImportData.progress;
   let completed = 1;

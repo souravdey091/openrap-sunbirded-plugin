@@ -7,6 +7,8 @@ import * as os from "os";
 import config from "../config";
 import Response from "../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
 const systemInfo = {
     x32: "32bit",
     ia32: "32bit",
@@ -18,6 +20,11 @@ const systemInfo = {
     linux: "linux",
 };
 
+// @ClassLogger({
+//     logLevel: "debug",
+//     logTime: true,
+//     logMethods: ["getDeviceId", "getDesktopAppUpdate", "getAppInfo" ],
+//   })
 export default class Appupdate {
     private deviceId;
 
@@ -41,7 +48,6 @@ export default class Appupdate {
     }
 
     public async getAppInfo(req, res) {
-            logger.debug(`ReqId = "${req.headers["X-msgid"]}": getAppInfo() is called`);
             const data = await this.checkForUpdate().catch((error) =>
             logger.error(`error while checking for update ${error.message} ${error.status}`));
             return res.send(Response.success("api.app.info", {

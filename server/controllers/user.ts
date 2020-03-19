@@ -4,6 +4,13 @@ import * as _ from "lodash";
 import { containerAPI } from "OpenRAP/dist/api";
 import Response from "../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+
+})*/
 export default class User {
     private userSDK;
     private settingSDK;
@@ -48,7 +55,6 @@ export default class User {
         }
     }
     public async update(req, res) {
-        logger.debug(`ReqId =  ${req.headers["X-msgid"]}: update user  method is called `);
 
         try {
             const reqObj = _.get(req.body, "request");

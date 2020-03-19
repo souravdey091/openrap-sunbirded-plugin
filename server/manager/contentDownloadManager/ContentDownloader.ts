@@ -13,6 +13,10 @@ import * as  StreamZip from "node-stream-zip";
 import TelemetryHelper from "../../helper/telemetryHelper";
 import HardDiskInfo from "../../utils/hardDiskInfo";
 
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export class ContentDownloader implements ITaskExecuter {
   public static taskType = "DOWNLOAD";
   public static group = "CONTENT_MANAGER";
@@ -35,7 +39,6 @@ export class ContentDownloader implements ITaskExecuter {
     this.contentDownloadData = contentDownloadData;
     this.observer = observer;
     this.contentDownloadMetaData = this.contentDownloadData.metaData;
-    logger.debug("ContentDownload executer start method called", this.contentDownloadData._id);
     _.forIn(this.contentDownloadMetaData.contentDownloadList, (value: IContentDownloadList, key) => {
       this.downloadContentCount += 1;
       if (value.step === "DOWNLOAD") {
@@ -57,7 +60,6 @@ export class ContentDownloader implements ITaskExecuter {
     this.interrupt = false;
     this.interruptType = "PAUSE";
     let pausedInQueue = false;
-    logger.debug("ContentDownload pause method called", this.contentDownloadData._id);
     _.forIn(this.contentDownloadMetaData.contentDownloadList, (value: IContentDownloadList, key) => {
       if (value.step === "DOWNLOAD") {
         const pauseRes = this.downloadSDK.cancel(value.downloadId);
@@ -77,14 +79,12 @@ export class ContentDownloader implements ITaskExecuter {
     }
   }
   public async resume(contentDownloadData: ISystemQueue, observer: Observer<ISystemQueue>) {
-    logger.debug("ContentDownload executer resume method called", this.contentDownloadData._id, "calling start method");
     return this.start(contentDownloadData, observer);
   }
   public async cancel() {
     this.interrupt = false;
     this.interruptType = "CANCEL";
     let cancelInQueue = false;
-    logger.debug("ContentDownload pause method called", this.contentDownloadData._id);
     _.forIn(this.contentDownloadMetaData.contentDownloadList, (value: IContentDownloadList, key) => {
       if (value.step === "DOWNLOAD") {
         const cancelRes = this.downloadSDK.cancel(value.downloadId);
@@ -109,7 +109,6 @@ export class ContentDownloader implements ITaskExecuter {
   }
   private getDownloadObserver(contentId) {
     const next = (downloadProgress: IDownloadProgress) => {
-      logger.debug(`${this.contentDownloadData._id}:Download progress event contentId: ${contentId}`, downloadProgress);
       if (downloadProgress.total) {
         this.handleDownloadProgress(contentId, downloadProgress);
       }
@@ -128,7 +127,6 @@ export class ContentDownloader implements ITaskExecuter {
     return { next, error, complete };
   }
   private handleDownloadError(contentId, error) {
-    logger.debug(`${this.contentDownloadData._id}:Download error event contentId: ${contentId},`, error);
     this.downloadFailedCount += 1;
     if (_.includes(["ESOCKETTIMEDOUT"], _.get(error, 'code')) || this.downloadFailedCount > 1 || (this.downloadContentCount === 1)) {
       this.interrupt = false;
@@ -208,7 +206,6 @@ export class ContentDownloader implements ITaskExecuter {
   }
   private async extractContent(contentId, contentDetails: IContentDownloadList) {
     const itemsToDelete = [];
-    logger.debug(`${this.contentDownloadData._id}:Extracting content: ${contentId}`);
     const zipHandler: any = await this.loadZipHandler(path.join(this.ecarBasePath, contentDetails.downloadId));
     await this.checkSpaceAvailability(path.join(this.ecarBasePath, contentDetails.downloadId), zipHandler);
     const entries = zipHandler.entries();
@@ -236,7 +233,6 @@ export class ContentDownloader implements ITaskExecuter {
     return { itemsToDelete };
   }
   private async saveContentToDb(contentId: string, contentDetails: IContentDownloadList) {
-    logger.debug(`${this.contentDownloadData._id}:Saving content: ${contentId} in database`);
     const manifestJson = await this.fileSDK.readJSON(
       path.join(this.fileSDK.getAbsPath("content"), contentDetails.identifier, "manifest.json"));
     const metaData: any = _.get(manifestJson, "archive.items[0]");

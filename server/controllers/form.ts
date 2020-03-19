@@ -10,6 +10,12 @@ import { Inject } from "typescript-ioc";
 import * as uuid from "uuid";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export class Form {
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -61,9 +67,7 @@ export class Form {
   }
 
   public search(req, res) {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Form search method is called`,
-    );
+
     const requestBody = req.body;
     let requestObj = _.get(requestBody, "request");
     requestObj = {

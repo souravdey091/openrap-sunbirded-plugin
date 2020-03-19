@@ -18,8 +18,14 @@ import { ExportContent } from "../../manager/contentExportManager"
 import TelemetryHelper from "../../helper/telemetryHelper";
 import { response } from "express";
 const sessionStartTime = Date.now();
+import { ClassLogger } from "@project-sunbird/logger/decorator";
 
 const INTERVAL_TO_CHECKUPDATE = 1
+
+@ClassLogger({
+  logLevel: "debug",
+  logTime: true
+})
 export default class Content {
     private deviceId: string;
     private contentsFilesPath: string = 'content';
@@ -44,7 +50,6 @@ export default class Content {
     }
 
     searchInDB(filters, reqId, sort?) {
-        logger.debug(`ReqId = "${reqId}": Contents are searching in ContentDb with given filters`)
         let modifiedFilters: Object = _.mapValues(filters, (v, k) => {
             if (k !== 'query') return ({ '$in': v })
         });
@@ -465,7 +470,6 @@ export default class Content {
     /* This method converts the buffer data to json and if any error will catch and return the buffer data */
 
     convertBufferToJson(proxyResData, req) {
-        logger.debug(`ReqId = "${req.headers['X-msgid']}": Converting Bufferdata to json`)
         let proxyData;
         try {
             proxyData = JSON.parse(proxyResData.toString('utf8'));
@@ -484,7 +488,6 @@ export default class Content {
     /* This method is to check contents are present in DB */
 
     async decorateContentWithProperty(contents, reqId) {
-        logger.debug(`ReqId = "${reqId}": Called decorateContent to decorate content`)
         try {
             const listOfContentIds = [];
             logger.info(`ReqId = "${reqId}": Pushing all the contentId's to an Array for all the requested Contents`)
@@ -504,15 +507,12 @@ export default class Content {
     /* This method is to check dialcode contents present in DB */
 
     decorateDialCodeContents(content, reqId) {
-        logger.debug(`ReqId = "${reqId}": Decorating Dial Code Contents`);
-        logger.debug(`ReqId = "${reqId}": Calling decorateContent from decoratedialcode`)
         return this.decorateContentWithProperty([content], reqId);
     }
 
     /* This method is to search contents for download status in database  */
 
     private isUpdateRequired(content, req) {
-        logger.debug(`ReqId = "${req.headers['X-msgid']}": Called isUpdateRequired()`);
 
         if (_.get(content, 'desktopAppMetadata.updateAvailable')) {
             logger.info(`ReqId = "${req.headers['X-msgid']}": updateAvailble for content and Don't call API`);
@@ -526,7 +526,6 @@ export default class Content {
     }
 
     private checkForUpdates(offlineContent, req) {
-        logger.debug(`ReqId = "${req.headers['X-msgid']}": calling api to check whether content: ${_.get(offlineContent, 'idenitifier')} is updated`);
         return new Promise(async (resolve, reject) => {
             try {
                 let onlineContent = await HTTPService.get(`${process.env.APP_BASE_URL}/api/content/v1/read/${offlineContent.identifier}?field=pkgVersion`, {}).toPromise();

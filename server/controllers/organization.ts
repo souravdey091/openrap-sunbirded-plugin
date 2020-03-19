@@ -7,6 +7,12 @@ import { Inject } from "typescript-ioc";
 import DatabaseSDK from "../sdk/database/index";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+// @ClassLogger({
+//   logLevel: "debug",
+//   logTime: true,
+// })
 export class Organization {
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -54,9 +60,7 @@ export class Organization {
   }
 
   public search(req, res) {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Organisation search method is called`,
-    );
+
     const requestBody = req.body;
 
     const searchObj = {

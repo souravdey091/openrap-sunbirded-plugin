@@ -10,6 +10,11 @@ import { Observer } from "rxjs";
 import TelemetryHelper from "../../helper/telemetryHelper";
 import { NetworkQueue } from "OpenRAP/dist/services/queue";
 
+import { ClassLogger} from "@project-sunbird/logger/decorator";
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export class ImportTelemetry implements ITaskExecuter {
   public static taskType = "TELEMETRY_IMPORT";
   private deviceId: string;
@@ -32,7 +37,6 @@ export class ImportTelemetry implements ITaskExecuter {
     return this.telemetryImportData;
   }
   public async start(telemetryImportData: ISystemQueue, observer: Observer<ISystemQueue>) {
-    logger.debug("Import task executor initialized for ", telemetryImportData);
     this.telemetryImportData = telemetryImportData;
     this.observer = observer;
     this.workerProcessRef = childProcess.fork(path.join(__dirname, "telemetryImportHelper"));
@@ -96,7 +100,6 @@ export class ImportTelemetry implements ITaskExecuter {
 
   private async handleChildProcessMessage() {
     this.workerProcessRef.on("message", async (data) => {
-      logger.info("Message from child process for importId:" + _.get(data, "telemetryImportData._id"), data.message);
       if (data.telemetryImportData && (data && data.message !== "LOG")) {
         this.saveDataFromWorker(data.telemetryImportData); // save only required data from child,
       }
@@ -135,8 +138,6 @@ export class ImportTelemetry implements ITaskExecuter {
   }
 
   private async handleUnexpectedChildProcessExit(code, signal) {
-    logger.error("Unexpected exit of child process for importId",
-      this.telemetryImportData._id, "with signal and code", code, signal);
     this.skippedFiles = [];
     this.observer.next(this.telemetryImportData);
     this.observer.error({
@@ -146,7 +147,6 @@ export class ImportTelemetry implements ITaskExecuter {
   }
 
   private async handleChildProcessError(err: ErrorObj) {
-    logger.error(this.telemetryImportData._id, "Got error while importing file with importId:", err);
     this.observer.next(this.telemetryImportData);
     this.observer.error({
       code: err.errCode,

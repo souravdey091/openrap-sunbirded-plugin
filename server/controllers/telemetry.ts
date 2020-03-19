@@ -9,6 +9,12 @@ import { ImportTelemetry } from "./../manager/telemetryImportManager/telemetryIm
 import { TelemetryImportManager } from "./../manager/telemetryImportManager/telemetryImportManager";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export default class Telemetry {
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -27,12 +33,6 @@ export default class Telemetry {
   }
 
   public addEvents(req, res) {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Called telemetry addEvents method`,
-    );
-    logger.info(
-      `ReqId = "${req.headers["X-msgid"]}": adding telemetry events: ${req.body.events.length}`,
-    );
     const events = req.body.events;
     if (_.isArray(events) && events.length) {
       logger.debug(
@@ -77,7 +77,6 @@ export default class Telemetry {
   }
 
   public async getTelemetrySyncSetting(req, res) {
-    logger.debug(`ReqId =  ${req.headers["X-msgid"]}: Get telemetry config to sync server is called`);
     try {
       const telemetryConfigData = await this.telemetrySDK.getTelemetrySyncSetting();
       res.status(200);
@@ -95,7 +94,6 @@ export default class Telemetry {
   }
 
   public async setTelemetrySyncSetting(req, res) {
-    logger.debug(`ReqId =  ${req.headers["X-msgid"]}: Set Telemetry config to sync server is called`);
     try {
       const enable = _.get(req, "body.request.enable");
       if (enable === undefined || typeof enable !== "boolean") {

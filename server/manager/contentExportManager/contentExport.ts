@@ -8,6 +8,11 @@ import { containerAPI } from "OpenRAP/dist/api";
 import { logger } from "@project-sunbird/logger";
 const fileSDK = containerAPI.getFileSDKInstance(manifest.id);
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+// @ClassLogger({
+//   logLevel: "debug",
+//   logTime: true,
+// })
 export class ExportContent {
   private contentBaseFolder = fileSDK.getAbsPath("content");
   private parentArchive;
@@ -80,7 +85,6 @@ export class ExportContent {
   }
   private async loadChildNodes(): Promise<boolean> {
     if (!this.dbParentNode.childNodes || !this.dbParentNode.childNodes.length) {
-      logger.debug("No child node for content to export", this.dbParentNode.identifier);
       return true;
     }
     const childNodes = _.filter(_.get(this.parentManifest, "archive.items"),
@@ -211,7 +215,6 @@ export class ExportContent {
     });
   }
   private archiveAppend(type, src, dest) {
-    logger.info(`Adding type ${type} to dest folder ${dest}`);
     if (type === "path") {
       this.parentArchive.append(fs.createReadStream(src), { name: dest });
     } else if (type === "directory") {

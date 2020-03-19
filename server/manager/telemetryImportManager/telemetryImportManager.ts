@@ -8,6 +8,11 @@ import { containerAPI, ISystemQueueInstance, SystemQueueReq } from "OpenRAP/dist
 import { manifest } from "../../manifest";
 import { ImportTelemetry } from "./telemetryImport";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+// @ClassLogger({
+//   logLevel: "debug",
+//   logTime: true,
+// })
 @Singleton
 export class TelemetryImportManager {
   private systemQueue: ISystemQueueInstance;
@@ -18,7 +23,6 @@ export class TelemetryImportManager {
   }
 
   public async add(paths: string[]): Promise<string[]> {
-    logger.info("Telemetry import paths added: ", paths);
     paths = await this.getUnregisteredPaths(paths);
     logger.info("Unregistered telemetry import paths:", paths);
     if (!paths || !paths.length) {
@@ -40,7 +44,6 @@ export class TelemetryImportManager {
       };
       queueReq.push(insertData);
     }
-    logger.info("Telemetry import added to queue", queueReq);
     const ids = await this.systemQueue.add(queueReq);
     return ids;
   }
@@ -66,7 +69,6 @@ export class TelemetryImportManager {
       name: { $in: paths.map((data) => path.basename(data)) },
       isActive: true,
     });
-    logger.debug("---registeredJobs--", JSON.stringify(registeredJobs));
     if (!registeredJobs) {
       return paths;
     }

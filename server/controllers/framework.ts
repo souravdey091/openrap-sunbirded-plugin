@@ -8,6 +8,12 @@ import * as path from "path";
 import { Inject } from "typescript-ioc";
 import Response from "./../utils/response";
 
+import { ClassLogger } from "@project-sunbird/logger/decorator";
+
+/*@ClassLogger({
+  logLevel: "debug",
+  logTime: true,
+})*/
 export class Framework {
   @Inject
   private databaseSdk: DatabaseSDK;
@@ -54,9 +60,7 @@ export class Framework {
   }
 
   public get(req: any, res: any): any {
-    logger.debug(
-      `ReqId = "${req.headers["X-msgid"]}": Getting Framework data for framework with Id: ${req.params.id}`,
-    );
+
     const id = req.params.id;
     logger.info(
       `ReqId = "${req.headers["X-msgid"]}": Getting the data from framework database with id: ${id}`,
