@@ -105,7 +105,7 @@ export class Location {
         });
     }
     public async proxyToAPI(req, res, next) {
-
+        const apiKey = await containerAPI.getDeviceSdkInstance().getToken();
         const requestObj = {
             type: _.get(req.body, "request.filters.type"),
             parentId: _.get(req.body, "request.filters.parentId"),
@@ -113,7 +113,7 @@ export class Location {
 
         const config = {
             headers: {
-                "authorization": `Bearer ${process.env.APP_BASE_URL_TOKEN}`,
+                "authorization": `Bearer ${apiKey}`,
                 "content-type": "application/json",
             },
         };

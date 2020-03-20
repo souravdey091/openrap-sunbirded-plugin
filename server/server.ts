@@ -103,7 +103,7 @@ export class Server extends BaseServer {
     }
     const pluginConfig = {
       pluginVer: manifest.version,
-      apiToken: process.env.APP_BASE_URL_TOKEN,
+      apiToken: await containerAPI.getDeviceSdkInstance().getToken(),
       apiBaseURL: process.env.APP_BASE_URL,
       apiTokenRefreshFn: "refreshToken"
     };

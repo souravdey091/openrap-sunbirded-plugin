@@ -61,6 +61,7 @@ export default class Appupdate {
     }
 
     private async checkForUpdate(): Promise<any> {
+            const apiKey = await containerAPI.getDeviceSdkInstance().getToken(this.deviceId);
             const body = {
                 request: {
                     appVersion: process.env.APP_VERSION,
@@ -70,7 +71,7 @@ export default class Appupdate {
             };
             const appConfig = {
                 headers: {
-                    "authorization": `Bearer ${process.env.APP_BASE_URL_TOKEN}`,
+                    "authorization": `Bearer ${apiKey}`,
                     "content-type": "application/json",
                 },
             };
