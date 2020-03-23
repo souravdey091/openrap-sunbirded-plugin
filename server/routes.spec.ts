@@ -858,8 +858,6 @@ describe("App Update", () => {
     });
 
     it("#app INFO ERROR", (done) => {
-        const HTTPServiceSpy = spy.on(HTTPService, "post", (data) => throwError({data:
-            {result: mockData.app_update_error.result}}));
         process.env.RELEASE_DATE = "16 December 2019";
         supertest(app)
             .get("/api/app/v1/info")

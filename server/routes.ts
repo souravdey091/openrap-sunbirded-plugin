@@ -433,6 +433,12 @@ export class Router {
       }),
     );
 
+    app.get(`/device/profile/:id`, proxy(proxyUrl, {
+      proxyReqPathResolver(req) {
+          return `/api/v3/device/profile/:id`;
+      },
+  }));
+
     app.post(
       "/api/content/v1/search",
       (req, res, next) => {

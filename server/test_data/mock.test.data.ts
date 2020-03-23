@@ -94,7 +94,11 @@ export const app_update_error = {
     'errmsg': 'Error while processing the request'
   },
   'responseCode': 'INTERNAL_SERVER_ERROR',
-  'result': {}
+  'result': {
+    'deviceId': '1234',
+    'languages': "English, Hindi",
+    'releaseDate': '16 December 2019'
+  }
 }
 export const get_content_error = { id: 'api.content.read',
 ver: '1.0',
