@@ -105,7 +105,9 @@ export class Location {
         });
     }
     public async proxyToAPI(req, res, next) {
-        const apiKey = await containerAPI.getDeviceSdkInstance().getToken();
+        const apiKey = await containerAPI.getDeviceSdkInstance().getToken().catch((err) => {
+            logger.error(`Received error while fetching api key in location search with error: ${err}`);
+        });
         const requestObj = {
             type: _.get(req.body, "request.filters.type"),
             parentId: _.get(req.body, "request.filters.parentId"),

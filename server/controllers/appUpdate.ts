@@ -61,7 +61,9 @@ export default class Appupdate {
     }
 
     private async checkForUpdate(): Promise<any> {
-            const apiKey = await containerAPI.getDeviceSdkInstance().getToken(this.deviceId);
+            const apiKey = await containerAPI.getDeviceSdkInstance().getToken().catch((err) => {
+                logger.error(`Received error while fetching api key in app update with error: ${err}`);
+            });
             const body = {
                 request: {
                     appVersion: process.env.APP_VERSION,
