@@ -95,7 +95,9 @@ export class ExportContent {
         .catch((err) => logger.error(`Error while reading content: ${child} for content import for ${this.dbParentNode.identifier}`));
       if (childManifest) {
         const childDetails = _.get(childManifest, "archive.items[0]");
-        await this.loadContent(childDetails, true);
+        if (childDetails) {
+          await this.loadContent(childDetails, true);
+        }
       } else if (dbChildDetails) {
         await this.loadContent(dbChildDetails, true);
       } else {

@@ -1,6 +1,6 @@
 {
   "name": "openrap-sunbirded-plugin",
-  "version": "0.0.75",
+  "version": "0.0.76",
   "description": "This plugin provides api's for offline consumption",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
